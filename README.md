@@ -43,7 +43,7 @@ On a phone it installs as a home-screen app. No App Store or Play Store listing 
 
 ## Production
 
-SQLite is for local only. On Render or Vercel the disk is ephemeral, so point `DATABASE_URL` at Postgres and change `provider = "sqlite"` in `prisma/schema.prisma` to `postgresql`, then run `npx prisma db push`.
+Production uses Postgres. Set `DATABASE_URL` (pooled) and `DIRECT_URL` (direct Neon URL), then run `npx prisma db push`.
 
 ### Vercel
 
