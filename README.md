@@ -57,6 +57,22 @@ Production uses Postgres. Set `DATABASE_URL` (pooled) and `DIRECT_URL` (direct N
 2. Bind the app with `npm run start` so it listens on `0.0.0.0:$PORT`.
 3. Add a Render cron job that `curl`s `/api/cron/sync` with the bearer secret.
 
+### Smile&Pay (ZB Bank) — preferred in Zimbabwe
+
+Plan subscriptions only (Starter / Family / Fleet). **Never** used for ZRP fine payments.
+
+1. Register at the [sandbox merchant portal](https://zbnet.zb.co.zw/wallet_sandbox_merchant/), then **Settings → API Keys**.
+2. Set in `.env` / Vercel:
+   - `SMILEPAY_ENV=sandbox` (or `production`)
+   - `SMILEPAY_SANDBOX_KEY` / `SMILEPAY_SANDBOX_SECRET` (or production pair)
+   - `APP_URL` must be a public HTTPS origin so ZB can POST the result URL
+3. Webhook (result URL): `/api/billing/smilepay/webhook` (optionally append `SMILEPAY_WEBHOOK_SECRET_PATH`)
+4. Callbacks are **unsigned**. PlatePing always re-checks payment status with the authenticated API before activating a plan.
+
+Prefer order when both gateways are configured: **Smile&Pay → Stripe → demo/`503`**.
+
+Each successful payment sets `subscriptionStatus=active` and `currentPeriodEnd ≈ now + 30 days`. Renewal is a new checkout (not Stripe-style auto-debit).
+
 ### Stripe
 
 Create three products (**Starter**, **Family**, and **Fleet**, not three prices on one product). Put the price IDs in:
@@ -69,7 +85,7 @@ Create three products (**Starter**, **Family**, and **Fleet**, not three prices 
 
 Webhook URL: `/api/billing/webhook`.
 
-If Stripe is not set, the plan buttons activate the workspace locally so you can launch without billing first.
+If neither Smile&Pay nor Stripe is set, plan buttons return 503 unless `ALLOW_DEMO_BILLING=true` (local only).
 
 Email alerts need `RESEND_API_KEY` and `ALERT_FROM_EMAIL`. In-app alerts still work without email.
 

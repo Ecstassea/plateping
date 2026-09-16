@@ -9,16 +9,20 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  phone        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  phone          String?
+  marketingOptIn  Boolean   @default(true)
+  termsAcceptedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   memberships   Membership[]
   notifications Notification[]
+  mailingList   MailingList?
+  pushSubscriptions PushSubscription[]
 
   @@index([email])
 }
@@ -34,13 +38,39 @@ model Organization {
   stripePriceId        String?
   subscriptionStatus   String    @default("inactive")
   currentPeriodEnd     DateTime?
+  billingProvider      String?
+  smilepayLastOrderRef String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   memberships Membership[]
   vehicles    Vehicle[]
+  payments    Payment[]
 
   @@index([inviteCode])
+}
+
+
+model Payment {
+  id               String    @id @default(cuid())
+  organizationId   String
+  orderReference   String    @unique
+  plan             String
+  amountCents      Int
+  currency         String    @default("USD")
+  status           String    @default("initiated")
+  provider         String    @default("smilepay")
+  providerTxnRef   String?
+  rawStatus        String?
+  paidAt           DateTime?
+  periodEnd        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status])
 }
 
 model Membership {
@@ -83,6 +113,7 @@ model Fine {
   location        String?
   source          String
   sourceUrl       String?
+  statementTitle  String?
   listedAt        DateTime?
   estimatedUsd    String?
   status          String    @default("listed")
@@ -119,4 +150,46 @@ model SyncRun {
   error       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MailingList {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  source         String
+  userId         String?   @unique
+  optedIn        Boolean   @default(true)
+  unsubscribedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([optedIn])
+  @@index([source])
+}
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  hits      Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
 }
