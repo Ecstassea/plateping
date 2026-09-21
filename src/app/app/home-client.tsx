@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CheckForm } from "@/components/CheckForm";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 type Props = {
   name: string;
@@ -36,15 +37,15 @@ export function HomeClient({
 
       <div className="grid grid-cols-3 gap-2">
         <div className="card p-3">
-          <p className="text-xs text-muted">Plates</p>
+          <p className="text-xs text-muted">Watched</p>
           <p className="text-2xl font-semibold">{vehicleCount}</p>
         </div>
         <div className="card p-3">
-          <p className="text-xs text-muted">Flagged</p>
+          <p className="text-xs text-muted">On a list</p>
           <p className="text-2xl font-semibold text-danger">{flaggedCount}</p>
         </div>
         <div className="card p-3">
-          <p className="text-xs text-muted">Alerts</p>
+          <p className="text-xs text-muted">Unread</p>
           <p className="text-2xl font-semibold text-gold">{unread}</p>
         </div>
       </div>
@@ -59,9 +60,19 @@ export function HomeClient({
       </Link>
 
       <p className="text-xs leading-5 text-muted">
-        Last list sync: {lastSync ? new Date(lastSync).toLocaleString() : "not yet. Open Plan or wait for the cron."}
-        {" "}PlatePing is a notification service only — we cannot take a fine payment.
+        {lastSync
+          ? `Lists last checked ${new Date(lastSync).toLocaleString("en-GB", { timeZone: "Africa/Harare" })}.`
+          : "Lists have not been checked yet. The owner can refresh them from the Plan tab."}{" "}
+        PlatePing only notifies you. It never takes a fine payment.
       </p>
+
+      <div className="card flex items-center justify-between gap-3 p-4">
+        <div>
+          <p className="text-sm font-medium">Missing something?</p>
+          <p className="text-xs text-muted">Tell us what to build next.</p>
+        </div>
+        <FeedbackButton askEmail={false} className="btn btn-ghost !w-auto !min-h-0 px-3 py-2 text-xs" label="Send an idea" />
+      </div>
     </div>
   );
 }

@@ -202,3 +202,20 @@ model RateLimit {
 
   @@index([resetAt])
 }
+
+/// Feature requests and problem reports from the app and the website.
+model Feedback {
+  id             String   @id @default(cuid())
+  userId         String?
+  organizationId String?
+  email          String?
+  kind           String   @default("feature")
+  message        String
+  page           String?
+  userAgent      String?
+  status         String   @default("new")
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}

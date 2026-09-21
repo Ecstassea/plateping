@@ -63,14 +63,14 @@ export function VehiclesClient({ initialVehicles, limits }: Props) {
       <form onSubmit={addPlate} className="card space-y-3 p-4">
         <input
           className="field uppercase tracking-[0.16em]"
-          placeholder="Registration"
+          placeholder="Number plate, e.g. ADX 5897"
           value={plate}
           onChange={(event) => setPlate(event.target.value.toUpperCase())}
           required
         />
         <input
           className="field"
-          placeholder="Label, e.g. Work Hilux"
+          placeholder="Name it, e.g. Work Hilux (optional)"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
         />
@@ -82,7 +82,7 @@ export function VehiclesClient({ initialVehicles, limits }: Props) {
 
       <div className="space-y-3">
         {vehicles.length === 0 ? (
-          <p className="text-sm text-muted">No plates yet. Add the regs you actually drive.</p>
+          <p className="text-sm text-muted">No plates yet. Add the cars you drive or look after.</p>
         ) : (
           vehicles.map((vehicle) => (
             <div key={vehicle.id} className="card flex items-center justify-between p-4">
@@ -90,7 +90,7 @@ export function VehiclesClient({ initialVehicles, limits }: Props) {
                 <p className="font-semibold tracking-wide">{vehicle.plateDisplay}</p>
                 <p className="text-sm text-muted">{vehicle.label || "No label"}</p>
                 <p className={`mt-1 text-xs ${vehicle.listed ? "text-danger" : "text-green"}`}>
-                  {vehicle.listed ? "Listed on a ZRP robot list" : "Clear on current lists"}
+                  {vehicle.listed ? "On a ZRP camera list" : "Not on any current list"}
                 </p>
                 {vehicle.listings.map((listing) => (
                   <p key={`${vehicle.id}-${listing.source}`} className="mt-1 text-xs text-muted">

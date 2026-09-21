@@ -2,24 +2,59 @@ import Link from "next/link";
 import { CheckForm } from "@/components/CheckForm";
 import { EcstasseaMark } from "@/components/EcstasseaMark";
 import { EmailCapture } from "@/components/EmailCapture";
+import { FeedbackButton } from "@/components/FeedbackButton";
+import { InstallButton } from "@/components/InstallPrompt";
 import { InstallHint } from "@/components/InstallHint";
 import { SiteChrome } from "@/components/SiteChrome";
 import { ZimbabweFlag } from "@/components/ZimbabweFlag";
 import { COMPANY_PLANS, PERSONAL_PLANS, PLANS, formatPlanMeta, type PaidPlanId } from "@/lib/plans";
-import { OFFICIAL_ZRP_LIST_STATEMENT } from "@/lib/plates";
+import { OFFICIAL_ZRP_LIST_STATEMENT, OFFICIAL_ZRP_SCAM_STATEMENT } from "@/lib/plates";
 
 const steps = [
   {
-    title: "Check a registration",
-    body: "Type a Zimbabwe plate. We match it against published ZRP robot / ETMS lists.",
+    title: "Type a number plate",
+    body: "We check it against the lists ZRP has published of cars caught by the robot cameras in Harare.",
   },
   {
-    title: "Watch the ones you drive",
-    body: "Save family or fleet plates. We pull new public lists automatically.",
+    title: "Save the cars you drive",
+    body: "Your own, the family's, or a whole company fleet. We keep checking every new list for you.",
   },
   {
-    title: "Get told if it appears",
-    body: "In-app alerts, and email if you want it. We do not offer a way to pay the fine. Report only at an official police station.",
+    title: "Get told the same day",
+    body: "A banner on your phone, a notice in the app, and an email if you want one. You then report to ZRP yourself.",
+  },
+] as const;
+
+const trust = [
+  { title: "Official lists only", body: "Every result links to the ZRP statement it came from." },
+  { title: "Never a fine payment", body: "We tell you. You report and pay at a police station, never through us." },
+  { title: "Built for a phone", body: "Add it to your home screen and alerts arrive like any other app." },
+] as const;
+
+const faqs = [
+  {
+    q: "Is PlatePing the police?",
+    a: "No. PlatePing is a private notification service run by Ecstassea Investments. We read the lists the Zimbabwe Republic Police publish and tell you if a plate you watch is on one. We are not connected to ZRP, TelOne or ZINARA.",
+  },
+  {
+    q: "Can I pay my fine here?",
+    a: "No, and you never will. There is no way to pay a fine in PlatePing, by card, by mobile money or through any link we send. ZRP has warned that messages asking you to pay a traffic fine online are scams. If your plate is listed, report to ZRP National Traffic at Mkushi Academy.",
+  },
+  {
+    q: "Where do the lists come from?",
+    a: "From ZRP press statements listing vehicles captured by the electronic traffic cameras, and public copies of those lists. Every match shows the source and its date.",
+  },
+  {
+    q: "What does it cost?",
+    a: "Checking a plate is free. Watching plates and getting alerts starts at $2 a month for two plates, paid with EcoCash, OneMoney, InnBucks, ZimSwitch or card. New accounts get seven days free.",
+  },
+  {
+    q: "Does it work on iPhone?",
+    a: "Yes. On Android it installs with one tap. On iPhone, Safari adds it to the home screen in three taps; tap Add to phone anywhere on this page and we show you exactly where to press.",
+  },
+  {
+    q: "My plate is clear. Does that mean I have no fine?",
+    a: "It means the plate is not on any published list we hold right now. It is not a court clearance, and new lists appear from time to time, which is exactly why people watch their plates.",
   },
 ] as const;
 
@@ -30,14 +65,17 @@ function PlanCards({ ids, columns }: { ids: PaidPlanId[]; columns: 2 | 3 }) {
         const plan = PLANS[id];
         return (
           <div key={id} className="card flex flex-col p-5">
-            <div className="flex items-baseline justify-between">
-              <p className="font-medium">{plan.label}</p>
-              <p className="text-green">${plan.priceUsd}/mo</p>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-lg font-semibold">{plan.label}</p>
+              <p className="text-xl font-semibold text-green">
+                ${plan.priceUsd}
+                <span className="text-xs font-normal text-muted">/month</span>
+              </p>
             </div>
-            <p className="mt-2 text-sm text-muted">{plan.blurb}</p>
+            <p className="mt-2 text-sm leading-6 text-muted">{plan.blurb}</p>
             <p className="mt-4 text-xs text-muted">{formatPlanMeta(plan)}</p>
             <Link className="btn btn-primary mt-5 !w-full" href="/register">
-              Start {plan.label}
+              Start free trial
             </Link>
           </div>
         );
@@ -50,120 +88,164 @@ export default function HomePage() {
   return (
     <SiteChrome>
       <main>
-        <section className="site-wrap grid items-start gap-8 pb-8 pt-8 md:grid-cols-2 md:gap-10 md:pt-10">
+        <section className="site-wrap grid items-start gap-10 pb-10 pt-10 md:grid-cols-2 md:gap-12 md:pt-16">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-green">
-              Zimbabwe · robot cameras
-            </p>
-            <h1 className="mt-4 text-4xl font-semibold leading-[1.1] md:text-6xl">
-              Know if your plate hits a published ZRP list.
+            <p className="eyebrow">Zimbabwe · ZRP robot camera lists</p>
+            <h1 className="mt-4 text-4xl font-semibold leading-[1.08] tracking-tight md:text-6xl">
+              Know the moment your number plate is on a ZRP camera list.
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted">
-              PlatePing is purely a notification service for motorists and companies. Check a
-              registration free. Pay a small monthly fee to watch plates and get told if they appear on
-              a published list. We do not offer any way to pay a traffic fine.
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted md:text-lg">
+              PlatePing checks Zimbabwe plates against the lists ZRP publishes and tells you the same day one of
+              yours appears. Check a plate free. Watch your cars from $2 a month.
             </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link className="btn btn-primary !w-full sm:!w-auto" href="/register">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-gold">
+              We never take fine payments. If a plate is listed, you report to ZRP yourself.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <InstallButton className="!w-full sm:!w-auto" variant="primary" />
+              <Link className="btn btn-ghost !w-full sm:!w-auto" href="/register">
                 Create a free account
               </Link>
-              <a className="btn btn-ghost !w-full sm:!w-auto" href="#check">
-                Check a plate first
+            </div>
+            <p className="mt-3 text-sm text-muted">
+              Or{" "}
+              <a className="text-green underline" href="#check">
+                check a plate first
               </a>
-            </div>
+              , no account needed.
+            </p>
+            <ul className="mt-8 grid gap-3 sm:grid-cols-3">
+              {trust.map((item) => (
+                <li className="trust-item" key={item.title}>
+                  <span className="trust-dot" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted">{item.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="space-y-6">
-            <div className="ecs-hero mx-auto md:ml-auto md:mr-0">
-              <ZimbabweFlag animated />
-              <EcstasseaMark instanceId="hero" size={88} />
-            </div>
+          <div className="space-y-5">
             <div id="check" className="card p-5 md:p-6">
-              <p className="text-sm font-medium">Quick check</p>
-              <p className="mt-1 text-sm text-muted">Try ADX 5897 to see a listed example.</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-lg font-semibold">Check a plate</p>
+                <span className="rounded-full border border-line px-3 py-1 text-xs text-muted">Free</span>
+              </div>
+              <p className="mt-1 text-sm text-muted">Try ADX 5897 to see what a listed plate looks like.</p>
               <div className="mt-4">
                 <CheckForm />
               </div>
               <p className="mt-4 text-xs leading-5 text-muted">
-                Lists come from ZRP.{" "}
-                <a
-                  className="text-green underline"
-                  href={OFFICIAL_ZRP_LIST_STATEMENT.href}
-                  rel="noreferrer"
-                  target="_blank"
-                >
+                Results come from ZRP.{" "}
+                <a className="text-green underline" href={OFFICIAL_ZRP_LIST_STATEMENT.href} rel="noreferrer" target="_blank">
                   {OFFICIAL_ZRP_LIST_STATEMENT.shortLabel}
                 </a>
               </p>
             </div>
+            <div className="ecs-hero mx-auto md:ml-auto md:mr-0">
+              <ZimbabweFlag animated />
+              <EcstasseaMark instanceId="hero" size={72} />
+            </div>
           </div>
         </section>
 
-        <section id="how" className="site-wrap mt-8 grid gap-4 md:grid-cols-3">
-          {steps.map((step, index) => (
-            <div key={step.title} className="card p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-gold">0{index + 1}</p>
-              <h2 className="mt-3 text-lg font-semibold">{step.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">{step.body}</p>
-            </div>
-          ))}
+        <section id="how" className="site-wrap mt-10">
+          <p className="eyebrow">How it works</p>
+          <h2 className="section-title">Three steps, then we do the watching.</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {steps.map((step, index) => (
+              <div key={step.title} className="card p-5">
+                <span className="step-number">{index + 1}</span>
+                <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted">{step.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="install" className="site-wrap mt-16">
+          <InstallHint />
         </section>
 
         <section id="fleet" className="site-wrap mt-16">
-          <h2 className="text-3xl font-semibold">How a company fleet joins</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            There is no shared company password. The owner invites people with a code. Staff keep their
-            own logins.
+          <p className="eyebrow">Companies</p>
+          <h2 className="section-title">One workspace for the whole fleet.</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+            The owner invites staff with a code. Everyone keeps their own login and sees the same plates and
+            alerts. Nobody shares a password.
           </p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <div className="card p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-gold">01</p>
-              <h3 className="mt-3 text-lg font-semibold">Owner registers as Company</h3>
+              <span className="step-number">1</span>
+              <h3 className="mt-4 text-lg font-semibold">Register as a company</h3>
               <p className="mt-2 text-sm leading-6 text-muted">
-                That creates a workspace and an invite code. Only the owner can see the code on the Team
-                tab.
+                That creates the workspace and an invite code. Only the owner sees the code, on the Team tab.
               </p>
             </div>
             <div className="card p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-gold">02</p>
-              <h3 className="mt-3 text-lg font-semibold">Staff create their own accounts</h3>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Each person signs up with their email. Do not share the owner’s password.
-              </p>
+              <span className="step-number">2</span>
+              <h3 className="mt-4 text-lg font-semibold">Staff make their own logins</h3>
+              <p className="mt-2 text-sm leading-6 text-muted">Each person signs up with their own email.</p>
             </div>
             <div className="card p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-gold">03</p>
-              <h3 className="mt-3 text-lg font-semibold">They enter the code at Join</h3>
+              <span className="step-number">3</span>
+              <h3 className="mt-4 text-lg font-semibold">They enter the code</h3>
               <p className="mt-2 text-sm leading-6 text-muted">
-                After sign-in they open Join a fleet, type the code, and see the same plates and alerts.
-                Seat limits follow the Fleet plan.
+                On the Join page. From then on they see the fleet&apos;s plates and alerts. Seats follow the plan.
               </p>
             </div>
           </div>
           <Link className="btn btn-ghost mt-6 !w-auto px-5" href="/join">
-            Join a fleet
+            Join a fleet with a code
           </Link>
         </section>
 
         <section id="plans" className="site-wrap mt-16">
-          <h2 className="text-3xl font-semibold">Plans from $2 a month</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Subscriptions are for watching plates and alerts only. PlatePing is a notification
-            service — there is no way here to pay a ZRP fine. Paynow billing (when connected) is for
-            the subscription, not the ticket. Until then, new accounts get a 7-day trial. Companies
-            start on Fleet 20 and can move up.
+          <p className="eyebrow">Plans</p>
+          <h2 className="section-title">From $2 a month. Seven days free first.</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+            A plan pays for watching plates and sending alerts. It never pays a fine. Pay for one, three or twelve
+            months at a time with EcoCash, OneMoney, InnBucks, ZimSwitch or card.
           </p>
           <h3 className="mt-8 text-lg font-semibold">Personal</h3>
           <PlanCards ids={PERSONAL_PLANS} columns={2} />
           <h3 className="mt-10 text-lg font-semibold">Company</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            0–20 plates, 20–100 plates, or unlimited for large fleets.
-          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Up to 20 plates, up to 100, or no limit.</p>
           <PlanCards ids={COMPANY_PLANS} columns={3} />
+        </section>
+
+        <section id="faq" className="site-wrap mt-16">
+          <p className="eyebrow">Questions</p>
+          <h2 className="section-title">Straight answers.</h2>
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {faqs.map((item) => (
+              <details className="faq" key={item.q}>
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
+          <p className="mt-6 text-sm leading-6 text-muted">
+            ZRP&apos;s own warning:{" "}
+            <a className="text-green underline" href={OFFICIAL_ZRP_SCAM_STATEMENT.href} rel="noreferrer" target="_blank">
+              {OFFICIAL_ZRP_SCAM_STATEMENT.shortLabel}
+            </a>
+            .
+          </p>
         </section>
 
         <section className="site-wrap mt-16 grid gap-6 md:grid-cols-2">
           <EmailCapture />
-          <InstallHint />
+          <div className="card flex flex-col p-5">
+            <p className="font-medium">Missing something?</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Tell us what would make PlatePing more useful to you. A person reads every message.
+            </p>
+            <div className="mt-5">
+              <FeedbackButton className="btn btn-ghost !w-auto px-5" />
+            </div>
+          </div>
         </section>
       </main>
     </SiteChrome>

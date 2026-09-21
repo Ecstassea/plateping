@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useTransition, type ReactNode } from "react";
 import { INBOX_CHANGED_EVENT } from "@/lib/inbox";
 import { BrandLockup } from "@/components/BrandLockup";
+import { FeedbackButton } from "@/components/FeedbackButton";
+import { InstallButton } from "@/components/InstallPrompt";
 import { PushEnable, forgetPushSubscription } from "@/components/PushEnable";
 
 type Props = {
@@ -61,9 +63,12 @@ export function AppShell({ orgName, unread, userId, children }: Props) {
           <BrandLockup compact />
           <p className="mt-1 text-sm text-muted">{orgName}</p>
         </div>
-        <button className="text-sm text-muted" onClick={logout} type="button">
-          Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <InstallButton className="!min-h-0 px-3 py-1.5 text-xs" />
+          <button className="text-sm text-muted" onClick={logout} type="button">
+            Sign out
+          </button>
+        </div>
       </header>
       <PushEnable userId={userId} />
       <main className="flex-1 px-5 pb-28">
@@ -80,6 +85,8 @@ export function AppShell({ orgName, unread, userId, children }: Props) {
           <Link className="underline" href="/disclaimer">
             Disclaimer
           </Link>
+          {" · "}
+          <FeedbackButton askEmail={false} className="underline" label="Send feedback" />
         </p>
       </main>
       <nav

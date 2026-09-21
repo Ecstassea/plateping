@@ -26,7 +26,7 @@ export function BrandLockup({
         className={
           compact
             ? "mt-0.5 text-[9px] uppercase tracking-[0.16em] text-muted"
-            : "text-[10px] uppercase tracking-[0.18em] text-muted"
+            : "hidden text-[10px] uppercase tracking-[0.18em] text-muted sm:block"
         }
       >
         An Ecstassea product

@@ -11,9 +11,9 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "PlatePing — Zimbabwe robot / ETMS plate alerts",
+  title: "PlatePing — know if your plate is on a ZRP camera list",
   description:
-    "Check a Zimbabwe registration against published ZRP traffic-light lists and get notified. PlatePing is a notification service only and does not offer a way to pay a fine.",
+    "Check a Zimbabwe number plate against the lists ZRP publishes, watch your cars, and get told the same day one appears. A notification service only. We never take fine payments.",
   applicationName: "PlatePing",
   manifest: "/manifest.json",
   appleWebApp: {

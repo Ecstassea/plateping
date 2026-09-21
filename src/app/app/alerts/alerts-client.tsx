@@ -56,8 +56,8 @@ export function AlertsClient({ initialAlerts }: { initialAlerts: AlertView[] }) 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       {alerts.length === 0 ? (
         <p className="text-sm text-muted">
-          Nothing yet. When a watched plate hits a published list, it shows up here and we email you if
-          Resend is configured. Alerts are notices only — PlatePing does not offer a way to pay a fine.
+          Nothing yet. When a plate you watch appears on a published ZRP list, the notice lands here, on your
+          phone, and in your email. A notice is information only. PlatePing never takes a fine payment.
         </p>
       ) : (
         alerts.map((alert) => {
@@ -98,7 +98,7 @@ export function AlertsClient({ initialAlerts }: { initialAlerts: AlertView[] }) 
         })
       )}
       <p className="text-xs leading-5 text-muted">
-        PlatePing is purely a notification service. We do not offer any way to pay a traffic fine.
+        PlatePing only notifies you. It never takes a fine payment. If a plate is listed, report to ZRP yourself.
       </p>
     </div>
   );
