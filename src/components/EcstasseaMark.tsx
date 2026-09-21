@@ -24,11 +24,14 @@ export function EcstasseaMark({
   color = "#E85D24",
   instanceId = "ecs",
   className = "",
+  still = false,
 }: {
   size?: number;
   color?: string;
   instanceId?: string;
   className?: string;
+  /** No breathing, flowing or pulsing: for places that should stay calm. */
+  still?: boolean;
 }) {
   const gradId = `${instanceId}-fade`;
   const maskId = `${instanceId}-mask`;
@@ -38,7 +41,7 @@ export function EcstasseaMark({
   return (
     <svg
       aria-label="Ecstassea"
-      className={`ecstassea-mark ${className}`.trim()}
+      className={`ecstassea-mark ${still ? "ecs-still" : ""} ${className}`.trim()}
       height={size}
       overflow="visible"
       role="img"

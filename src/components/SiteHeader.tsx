@@ -6,7 +6,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-line/80 bg-bg/80 backdrop-blur">
       <div className="site-wrap flex items-center justify-between gap-4 py-4">
-        <BrandLockup href="/" />
+        <BrandLockup href="/" icon />
         <nav className="hidden items-center gap-6 text-sm text-muted md:flex">
           <Link href="/#check">Check a plate</Link>
           <Link href="/#how">How it works</Link>

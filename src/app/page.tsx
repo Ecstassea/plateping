@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { CheckForm } from "@/components/CheckForm";
-import { EcstasseaMark } from "@/components/EcstasseaMark";
 import { EmailCapture } from "@/components/EmailCapture";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { HeroPhone } from "@/components/HeroPhone";
 import { InstallButton } from "@/components/InstallPrompt";
 import { InstallHint } from "@/components/InstallHint";
 import { SiteChrome } from "@/components/SiteChrome";
@@ -10,16 +10,48 @@ import { ZimbabweFlag } from "@/components/ZimbabweFlag";
 import { COMPANY_PLANS, PERSONAL_PLANS, PLANS, formatPlanMeta, type PaidPlanId } from "@/lib/plans";
 import { OFFICIAL_ZRP_LIST_STATEMENT, OFFICIAL_ZRP_SCAM_STATEMENT } from "@/lib/plates";
 
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.2-4.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CarIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+      <path d="M4 13.5 5.6 8.8A2 2 0 0 1 7.5 7.5h9a2 2 0 0 1 1.9 1.3L20 13.5" strokeLinecap="round" />
+      <rect height="5.5" rx="1.6" width="17" x="3.5" y="13" />
+      <circle cx="7.5" cy="18.5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="16.5" cy="18.5" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" strokeLinejoin="round" />
+      <path d="M10 20a2 2 0 0 0 4 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 const steps = [
   {
+    icon: <SearchIcon />,
     title: "Type a number plate",
     body: "We check it against the lists ZRP has published of cars caught by the robot cameras in Harare.",
   },
   {
+    icon: <CarIcon />,
     title: "Save the cars you drive",
     body: "Your own, the family's, or a whole company fleet. We keep checking every new list for you.",
   },
   {
+    icon: <BellIcon />,
     title: "Get told the same day",
     body: "A banner on your phone, a notice in the app, and an email if you want one. You then report to ZRP yourself.",
   },
@@ -58,23 +90,25 @@ const faqs = [
   },
 ] as const;
 
-function PlanCards({ ids, columns }: { ids: PaidPlanId[]; columns: 2 | 3 }) {
+function PlanCards({ ids, columns, popular }: { ids: PaidPlanId[]; columns: 2 | 3; popular?: PaidPlanId }) {
   return (
     <div className={`mt-6 grid gap-4 ${columns === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
       {ids.map((id) => {
         const plan = PLANS[id];
+        const isPopular = id === popular;
         return (
-          <div key={id} className="card flex flex-col p-5">
+          <div key={id} className={`card flex flex-col p-5 ${isPopular ? "plan-popular" : ""}`}>
+            {isPopular ? <span className="plan-badge">Most popular</span> : null}
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-lg font-semibold">{plan.label}</p>
-              <p className="text-xl font-semibold text-green">
+              <p className="text-2xl font-semibold text-green">
                 ${plan.priceUsd}
                 <span className="text-xs font-normal text-muted">/month</span>
               </p>
             </div>
             <p className="mt-2 text-sm leading-6 text-muted">{plan.blurb}</p>
             <p className="mt-4 text-xs text-muted">{formatPlanMeta(plan)}</p>
-            <Link className="btn btn-primary mt-5 !w-full" href="/register">
+            <Link className={`btn mt-5 !w-full ${isPopular ? "btn-primary" : "btn-ghost"}`} href="/register">
               Start free trial
             </Link>
           </div>
@@ -88,7 +122,7 @@ export default function HomePage() {
   return (
     <SiteChrome>
       <main>
-        <section className="site-wrap grid items-start gap-10 pb-10 pt-10 md:grid-cols-2 md:gap-12 md:pt-16">
+        <section className="site-wrap grid items-center gap-10 pb-12 pt-10 md:grid-cols-[1.15fr_0.85fr] md:gap-12 md:pt-16">
           <div>
             <p className="eyebrow">Zimbabwe · ZRP robot camera lists</p>
             <h1 className="mt-4 text-4xl font-semibold leading-[1.08] tracking-tight md:text-6xl">
@@ -114,25 +148,42 @@ export default function HomePage() {
               </a>
               , no account needed.
             </p>
-            <ul className="mt-8 grid gap-3 sm:grid-cols-3">
-              {trust.map((item) => (
-                <li className="trust-item" key={item.title}>
-                  <span className="trust-dot" aria-hidden="true" />
-                  <div>
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="made-for mt-8">
+              <ZimbabweFlag />
+              <span>
+                <strong>Made for Zimbabwe</strong>
+                Harare ZRP lists · EcoCash, OneMoney, InnBucks, ZimSwitch
+              </span>
+            </div>
           </div>
-          <div className="space-y-5">
-            <div id="check" className="card p-5 md:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-lg font-semibold">Check a plate</p>
-                <span className="rounded-full border border-line px-3 py-1 text-xs text-muted">Free</span>
-              </div>
-              <p className="mt-1 text-sm text-muted">Try ADX 5897 to see what a listed plate looks like.</p>
+          <div className="hidden md:block">
+            <HeroPhone />
+          </div>
+        </section>
+
+        <section className="band py-10 md:py-14" id="check">
+          <div className="site-wrap grid items-start gap-8 md:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="eyebrow">Free check</p>
+              <h2 className="section-title">Is a plate on a list right now?</h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-muted">
+                Type any Zimbabwe registration. No account, no cost. Try ADX 5897 to see what a listed plate looks
+                like.
+              </p>
+              <ul className="mt-6 grid gap-3">
+                {trust.map((item) => (
+                  <li className="trust-item" key={item.title}>
+                    <span className="trust-dot" aria-hidden="true" />
+                    <div>
+                      <p className="text-sm font-medium">{item.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted">{item.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="card p-5 md:p-6">
+              <p className="text-lg font-semibold">Check a plate</p>
               <div className="mt-4">
                 <CheckForm />
               </div>
@@ -143,20 +194,19 @@ export default function HomePage() {
                 </a>
               </p>
             </div>
-            <div className="ecs-hero mx-auto md:ml-auto md:mr-0">
-              <ZimbabweFlag animated />
-              <EcstasseaMark instanceId="hero" size={72} />
-            </div>
           </div>
         </section>
 
-        <section id="how" className="site-wrap mt-10">
+        <section id="how" className="site-wrap mt-16">
           <p className="eyebrow">How it works</p>
           <h2 className="section-title">Three steps, then we do the watching.</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {steps.map((step, index) => (
               <div key={step.title} className="card p-5">
-                <span className="step-number">{index + 1}</span>
+                <div className="flex items-center justify-between">
+                  <span className="step-icon">{step.icon}</span>
+                  <span className="text-xs uppercase tracking-[0.18em] text-muted">Step {index + 1}</span>
+                </div>
                 <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">{step.body}</p>
               </div>
@@ -201,18 +251,21 @@ export default function HomePage() {
           </Link>
         </section>
 
-        <section id="plans" className="site-wrap mt-16">
-          <p className="eyebrow">Plans</p>
-          <h2 className="section-title">From $2 a month. Seven days free first.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-            A plan pays for watching plates and sending alerts. It never pays a fine. Pay for one, three or twelve
-            months at a time with EcoCash, OneMoney, InnBucks, ZimSwitch or card.
-          </p>
-          <h3 className="mt-8 text-lg font-semibold">Personal</h3>
-          <PlanCards ids={PERSONAL_PLANS} columns={2} />
-          <h3 className="mt-10 text-lg font-semibold">Company</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Up to 20 plates, up to 100, or no limit.</p>
-          <PlanCards ids={COMPANY_PLANS} columns={3} />
+        <section id="plans" className="band mt-16 py-12 md:py-16">
+          <div className="site-wrap">
+            <p className="eyebrow">Plans</p>
+            <h2 className="section-title">From $2 a month. Seven days free first.</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+              A plan pays for watching plates and sending alerts. It never pays a fine. Pay for one, three or
+              twelve months at a time with EcoCash, OneMoney, InnBucks, ZimSwitch or card. No card needed for the
+              trial.
+            </p>
+            <h3 className="mt-8 text-lg font-semibold">Personal</h3>
+            <PlanCards ids={PERSONAL_PLANS} columns={2} popular="starter" />
+            <h3 className="mt-10 text-lg font-semibold">Company</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Up to 20 plates, up to 100, or no limit.</p>
+            <PlanCards ids={COMPANY_PLANS} columns={3} popular="fleet" />
+          </div>
         </section>
 
         <section id="faq" className="site-wrap mt-16">

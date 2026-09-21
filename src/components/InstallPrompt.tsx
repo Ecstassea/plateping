@@ -387,7 +387,7 @@ export function InstallPrompt() {
     <>
       {barVisible ? (
         <div
-          className={`fixed inset-x-0 z-40 mx-auto w-full max-w-[430px] px-4 ${
+          className={`fixed inset-x-0 z-40 mx-auto w-full max-w-[430px] px-4 md:hidden ${
             overTabBar ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom))]" : "bottom-[max(1rem,env(safe-area-inset-bottom))]"
           }`}
         >
