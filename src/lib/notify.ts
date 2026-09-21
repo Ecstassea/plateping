@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getLimits } from "@/lib/plans";
-import { displayPlate } from "@/lib/plates";
+import { displayPlate, OFFICIAL_ZRP_LIST_STATEMENT } from "@/lib/plates";
+import { sendPushAlert } from "@/lib/push";
 
 export async function notifyWatchers(plateNormalized: string, offence: string) {
   const vehicles = await prisma.vehicle.findMany({
@@ -12,8 +13,8 @@ export async function notifyWatchers(plateNormalized: string, offence: string) {
     },
   });
 
-  const title = `${displayPlate(plateNormalized)} is on a ZRP list`;
-  const body = `${displayPlate(plateNormalized)} was listed for ${offence}. This is not a payment request. Check the official ZRP contacts in the app.`;
+  const title = `${displayPlate(plateNormalized)} is on a ZRP robot list`;
+  const body = `${displayPlate(plateNormalized)} was listed for ${offence} in Harare CBD. PlatePing is a notification service only and cannot take a fine payment. ZRP asks the owner to report to National Traffic at Mkushi Academy, or call 0242 703631 / WhatsApp 0712 800 197. Official statement: ${OFFICIAL_ZRP_LIST_STATEMENT.href}. This is not a payment request. Pay only at an official police station.`;
 
   for (const vehicle of vehicles) {
     const limits = getLimits(vehicle.organization);
@@ -43,12 +44,13 @@ export async function notifyWatchers(plateNormalized: string, offence: string) {
         },
       });
 
+      await sendPushAlert(member.userId, title, body);
       await sendEmailAlert(member.user.email, title, body);
     }
   }
 }
 
-async function sendEmailAlert(to: string, title: string, body: string) {
+export async function sendEmailAlert(to: string, title: string, body: string) {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.ALERT_FROM_EMAIL;
   if (!key || !from) {

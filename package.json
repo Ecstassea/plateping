@@ -12,7 +12,9 @@
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
     "icons": "node scripts/icons/build-icons.mjs",
-    "test:billing": "tsx --test src/lib/__tests__/billing-smilepay.test.ts"
+    "test:billing": "tsx --test src/lib/__tests__/billing-smilepay.test.ts",
+    "test": "node --import tsx --test src/lib/*.test.ts",
+    "paynow:check": "tsx scripts/paynow-check.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

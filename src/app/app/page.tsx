@@ -1,6 +1,9 @@
+import { TabScreen } from "@/components/TabScreen";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getLimits, isEntitled } from "@/lib/plans";
+import { countUnread } from "@/lib/unread";
+import { countFlaggedVehicles } from "@/lib/vehicles";
 import { HomeClient } from "./home-client";
 
 export default async function AppHomePage() {
@@ -9,33 +12,27 @@ export default async function AppHomePage() {
     return null;
   }
 
-  const [vehicleCount, unread, lastSync, listedCount] = await Promise.all([
+  // One parallel batch after the membership lookup, so the home screen costs
+  // two database round trips in total.
+  const [vehicleCount, flaggedCount, unread, lastSync] = await Promise.all([
     prisma.vehicle.count({ where: { organizationId: session.organizationId } }),
-    prisma.notification.count({
-      where: { userId: session.userId, organizationId: session.organizationId, readAt: null },
-    }),
-    prisma.syncRun.findFirst({ orderBy: { createdAt: "desc" } }),
-    prisma.vehicle.findMany({
-      where: { organizationId: session.organizationId },
-      select: { plateNormalized: true },
-    }),
+    countFlaggedVehicles(session.organizationId),
+    countUnread(session.userId, session.organizationId),
+    prisma.syncRun.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
 
-  const fines = await prisma.fine.findMany({
-    where: { plateNormalized: { in: listedCount.map((vehicle) => vehicle.plateNormalized) } },
-    select: { plateNormalized: true },
-  });
-
   return (
-    <HomeClient
-      name={session.user.name}
-      planLabel={getLimits(session.organization).label}
-      entitled={isEntitled(session.organization)}
-      trialEnds={session.organization.currentPeriodEnd?.toISOString() ?? null}
-      vehicleCount={vehicleCount}
-      flaggedCount={new Set(fines.map((fine) => fine.plateNormalized)).size}
-      unread={unread}
-      lastSync={lastSync?.createdAt.toISOString() ?? null}
-    />
+    <TabScreen>
+      <HomeClient
+        name={session.user.name}
+        planLabel={getLimits(session.organization).label}
+        entitled={isEntitled(session.organization)}
+        trialEnds={session.organization.currentPeriodEnd?.toISOString() ?? null}
+        vehicleCount={vehicleCount}
+        flaggedCount={flaggedCount}
+        unread={unread}
+        lastSync={lastSync?.createdAt.toISOString() ?? null}
+      />
+    </TabScreen>
   );
 }

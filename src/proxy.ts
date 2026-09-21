@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Endpoints that legitimately receive POSTs from other origins (Stripe, Smile&Pay, Vercel cron).
-const PUBLIC_MUTATIONS = new Set(["/api/billing/webhook", "/api/cron/sync"]);
+const PUBLIC_MUTATIONS = new Set(["/api/billing/webhook", "/api/billing/paynow/result", "/api/cron/sync"]);
 
 function isPublicMutation(pathname: string) {
   if (PUBLIC_MUTATIONS.has(pathname)) {

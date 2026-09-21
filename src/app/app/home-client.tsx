@@ -54,12 +54,13 @@ export function HomeClient({
         <CheckForm compact />
       </div>
 
-      <Link href="/app/vehicles" className="btn btn-primary">
+      <Link className="btn btn-primary" href="/app/vehicles" transitionTypes={["tab-forward"]}>
         Watch a plate
       </Link>
 
-      <p className="text-xs text-muted">
+      <p className="text-xs leading-5 text-muted">
         Last list sync: {lastSync ? new Date(lastSync).toLocaleString() : "not yet. Open Plan or wait for the cron."}
+        {" "}PlatePing is a notification service only — we cannot take a fine payment.
       </p>
     </div>
   );

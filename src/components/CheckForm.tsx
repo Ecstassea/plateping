@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ZRP_REPORT } from "@/lib/plates";
+import {
+  OFFICIAL_ZRP_LIST_STATEMENT,
+  OFFICIAL_ZRP_SCAM_STATEMENT,
+  ZRP_GUIDANCE,
+  sourceHref,
+  sourceLabel,
+  statementDisplayTitle,
+} from "@/lib/plates";
 
 type Fine = {
   id: string;
@@ -9,15 +16,35 @@ type Fine = {
   location: string | null;
   source: string;
   sourceUrl: string | null;
-  estimatedUsd: string | null;
+  statementTitle: string | null;
+  publishedOn: string | null;
   status: string;
-  listedAt: string | null;
+};
+
+type Guidance = {
+  meaning: string;
+  action: string;
+  station: string;
+  phone: string;
+  phoneHref: string;
+  whatsapp: string;
+  whatsappHref: string;
+  payWarning: string;
+  unpublished: readonly string[];
+};
+
+type ListStatus = {
+  source: string;
+  checkedAt: string;
+  platesFound: number;
 };
 
 type CheckResult = {
   plateDisplay: string;
   listed: boolean;
   fines: Fine[];
+  guidance?: Guidance;
+  listStatus?: ListStatus[];
   error?: string;
 };
 
@@ -47,6 +74,8 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
     }
   }
 
+  const guidance = result?.guidance ?? ZRP_GUIDANCE;
+
   return (
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="space-y-3">
@@ -61,6 +90,11 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
         <button className="btn btn-primary" disabled={loading} type="submit">
           {loading ? "Checking lists…" : "Check this plate"}
         </button>
+        {compact ? null : (
+          <p className="text-xs leading-5 text-muted">
+            Notification only. PlatePing does not offer a way to pay a traffic fine.
+          </p>
+        )}
       </form>
 
       {result ? (
@@ -70,26 +104,89 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
           ) : result.listed ? (
             <>
               <p className="text-lg font-semibold text-danger">{result.plateDisplay} is listed</p>
-              <p className="text-sm text-muted">
-                Found on a published ZRP robot / traffic-light list. This is an unofficial alert, not a
-                court summons.
-              </p>
+              <p className="text-sm text-muted">{guidance.meaning}</p>
               {result.fines.map((fine) => (
                 <div key={fine.id} className="rounded-2xl border border-line bg-bg-2 p-3 text-sm">
                   <p className="font-medium">{fine.offence}</p>
-                  <p className="mt-1 text-muted">{fine.location}</p>
-                  <p className="mt-1 text-gold">{fine.estimatedUsd}</p>
-                  <p className="mt-2 text-xs text-muted">Source: {fine.source}</p>
+                  {fine.location ? <p className="mt-1 text-muted">{fine.location}</p> : null}
+                  {fine.publishedOn ? (
+                    <p className="mt-1 text-muted">Published {fine.publishedOn}</p>
+                  ) : null}
+                  {sourceHref(fine.source, fine.sourceUrl) ? (
+                    <a
+                      className="mt-2 block text-xs leading-5 text-green underline"
+                      href={sourceHref(fine.source, fine.sourceUrl) ?? undefined}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {statementDisplayTitle(fine.source, fine.statementTitle)}
+                    </a>
+                  ) : fine.statementTitle ? (
+                    <p className="mt-2 text-xs leading-5 text-muted">{fine.statementTitle}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted">{sourceLabel(fine.source)}</p>
                 </div>
               ))}
-              <p className="text-xs leading-5 text-muted">{ZRP_REPORT}</p>
+              <div className="rounded-2xl border border-line bg-bg-2 p-3 text-sm">
+                <p className="font-medium">What ZRP asks you to do</p>
+                <p className="mt-1 text-muted">
+                  {guidance.action}{" "}
+                  <a
+                    className="text-green underline"
+                    href={OFFICIAL_ZRP_LIST_STATEMENT.href}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Open the official statement
+                  </a>
+                  .
+                </p>
+                <p className="mt-2 text-muted">{guidance.station}</p>
+                <p className="mt-2">
+                  <a className="text-green" href={guidance.phoneHref}>
+                    {guidance.phone}
+                  </a>
+                  {" · "}
+                  <a className="text-green" href={guidance.whatsappHref} rel="noreferrer" target="_blank">
+                    WhatsApp {guidance.whatsapp}
+                  </a>
+                </p>
+              </div>
+              <p className="text-xs leading-5 text-muted">
+                {guidance.payWarning}{" "}
+                <a
+                  className="text-green underline"
+                  href={OFFICIAL_ZRP_SCAM_STATEMENT.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {OFFICIAL_ZRP_SCAM_STATEMENT.shortLabel}
+                </a>
+                .
+              </p>
+              {compact ? null : (
+                <p className="text-xs leading-5 text-muted">
+                  ZRP does not publish {guidance.unpublished.join(", ")} on these lists. Confirm the rest at
+                  the station.
+                </p>
+              )}
             </>
           ) : (
             <>
               <p className="text-lg font-semibold text-green">{result.plateDisplay} is clear</p>
               <p className="text-sm text-muted">
-                Not on the lists we currently watch. New ZRP lists are pulled automatically.
+                Not on the public robot / ETMS lists we currently watch. That is not a court clearance.
               </p>
+              {result.listStatus && result.listStatus.length > 0 ? (
+                <div className="rounded-2xl border border-line bg-bg-2 p-3 text-xs text-muted">
+                  {result.listStatus.map((run) => (
+                    <p key={`${run.source}-${run.checkedAt}`}>
+                      {sourceLabel(run.source)}: {run.platesFound} plates, last pulled{" "}
+                      {new Date(run.checkedAt).toLocaleString("en-GB", { timeZone: "Africa/Harare" })}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               {compact ? null : (
                 <p className="text-xs text-muted">
                   Create a free account to watch the plate and get notified if it appears later.

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { PwaProvider } from "@/components/PwaProvider";
 import "./globals.css";
 
@@ -10,9 +11,9 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "PlatePing — Zimbabwe robot fine alerts",
+  title: "PlatePing — Zimbabwe robot / ETMS plate alerts",
   description:
-    "Watch a Zimbabwe number plate and get notified if it appears on published ZRP traffic-light lists.",
+    "Check a Zimbabwe registration against published ZRP traffic-light lists and get notified. PlatePing is a notification service only and does not offer a way to pay a fine.",
   applicationName: "PlatePing",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
@@ -39,7 +41,6 @@ export const viewport: Viewport = {
   themeColor: "#07140e",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
 };
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-full bg-bg text-ink">
         <PwaProvider />
         {children}
+        <InstallPrompt />
       </body>
     </html>
   );

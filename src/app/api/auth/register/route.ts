@@ -1,25 +1,41 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createSession, hashPassword, randomInviteCode } from "@/lib/auth";
+import { createSession, hashPassword, randomInviteCode, verifyPasswordAgainstDummy } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { upsertMailingList } from "@/lib/mailing-list";
+import { rateLimit } from "@/lib/rate-limit";
+import { badRequest, clientIp, readJson, rejectUntrustedOrigin, tooMany } from "@/lib/request";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().email().toLowerCase(),
-  password: z.string().min(6).max(80),
+  password: z.string().min(8).max(80),
   accountType: z.enum(["personal", "company"]),
   companyName: z.string().trim().max(80).optional(),
+  marketingOptIn: z.boolean().optional(),
+  termsAccepted: z.literal(true),
 });
 
 export async function POST(request: Request) {
-  const parsed = schema.safeParse(await request.json());
+  const originError = rejectUntrustedOrigin(request);
+  if (originError) {
+    return originError;
+  }
+
+  const ipLimit = await rateLimit(`register:ip:${clientIp(request)}`, 5, 60 * 60 * 1000);
+  if (!ipLimit.ok) {
+    return tooMany(ipLimit);
+  }
+
+  const parsed = schema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Check your name, email and password." }, { status: 400 });
+    return badRequest("Use a real name, email, a password of at least 8 characters, and accept the terms.");
   }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
-    return NextResponse.json({ error: "That email is already registered." }, { status: 409 });
+    await verifyPasswordAgainstDummy(parsed.data.password);
+    return badRequest("Could not create that account. Try signing in.");
   }
 
   const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -29,11 +45,15 @@ export async function POST(request: Request) {
       ? parsed.data.companyName
       : `${parsed.data.name}'s plates`;
 
+  const marketingOptIn = parsed.data.marketingOptIn !== false;
+
   const user = await prisma.user.create({
     data: {
       name: parsed.data.name,
       email: parsed.data.email,
       passwordHash: await hashPassword(parsed.data.password),
+      marketingOptIn,
+      termsAcceptedAt: new Date(),
       memberships: {
         create: {
           role: "owner",
@@ -51,6 +71,14 @@ export async function POST(request: Request) {
       },
     },
     include: { memberships: true },
+  });
+
+  await upsertMailingList({
+    email: user.email,
+    name: user.name,
+    source: "register",
+    userId: user.id,
+    optedIn: marketingOptIn,
   });
 
   await createSession({

@@ -1,11 +1,14 @@
 import { TabScreen } from "@/components/TabScreen";
 import { isOwner, requireSession } from "@/lib/auth";
-import { normalizePlan } from "@/lib/plans";
-import { smilepayConfigured } from "@/lib/smilepay";
-import { BillingClient } from "./billing-client";
+import { isPaynowReference } from "@/lib/billing";
+import { activeBillingProvider } from "@/lib/billing-provider";
+import { prisma } from "@/lib/db";
+import { paynowConfig } from "@/lib/paynow";
+import { isEntitled, normalizePlan } from "@/lib/plans";
+import { BillingClient, type PaymentRow, type PendingPayment } from "./billing-client";
 
 type Props = {
-  searchParams: Promise<{ status?: string; orderReference?: string }>;
+  searchParams: Promise<{ status?: string; paynow?: string; orderReference?: string }>;
 };
 
 function checkoutMessage(status: string | undefined) {
@@ -26,15 +29,56 @@ export default async function BillingPage({ searchParams }: Props) {
     return null;
   }
 
+  const provider = activeBillingProvider();
+
+  // The customer is back from a hosted checkout; the client confirms it.
+  let pending: PendingPayment | null = null;
+  if (params.paynow && isPaynowReference(params.paynow)) {
+    pending = { provider: "paynow", reference: params.paynow };
+  } else if (params.orderReference && /^[\w-]{8,120}$/.test(params.orderReference)) {
+    pending = { provider: "smilepay", reference: params.orderReference };
+  }
+
+  const payments: PaymentRow[] = (
+    await prisma.payment.findMany({
+      where: { organizationId: session.organizationId },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        orderReference: true,
+        provider: true,
+        plan: true,
+        months: true,
+        amountCents: true,
+        status: true,
+        createdAt: true,
+        paidAt: true,
+      },
+    })
+  ).map((payment) => ({
+    reference: payment.orderReference,
+    provider: payment.provider,
+    plan: payment.plan,
+    months: payment.months,
+    amountUsd: payment.amountCents / 100,
+    status: payment.status,
+    createdAt: payment.createdAt.toISOString(),
+    paidAt: payment.paidAt?.toISOString() ?? null,
+  }));
+
   return (
     <TabScreen>
       <BillingClient
         plan={normalizePlan(session.organization.plan)}
         subscriptionStatus={session.organization.subscriptionStatus}
+        entitled={isEntitled(session.organization)}
+        currentPeriodEnd={session.organization.currentPeriodEnd?.toISOString() ?? null}
         owner={isOwner(session)}
-        initialMessage={checkoutMessage(params.status)}
-        smilepayConfigured={smilepayConfigured()}
-        orderReference={params.orderReference}
+        provider={provider}
+        paynowTestMode={paynowConfig()?.testMode ?? false}
+        pending={pending}
+        payments={payments}
+        initialMessage={pending ? "" : checkoutMessage(params.status)}
       />
     </TabScreen>
   );

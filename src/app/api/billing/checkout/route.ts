@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isOwner, requireSession } from "@/lib/auth";
+import { activeBillingProvider } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
 import { PAID_PLAN_IDS, PLANS, isPaidPlanId, stripePriceEnv } from "@/lib/plans";
 import { applyStripeSubscription, getStripe, stripeConfigured } from "@/lib/stripe";
@@ -9,7 +10,6 @@ import { badRequest, readJson, rejectUntrustedOrigin, tooMany } from "@/lib/requ
 import {
   initiateStandardCheckout,
   makeOrderReference,
-  smilepayConfigured,
   webhookResultUrl,
   webhookReturnUrl,
 } from "@/lib/smilepay";
@@ -47,8 +47,10 @@ export async function POST(request: Request) {
   const plan = parsed.data.plan;
   const planMeta = PLANS[plan];
 
-  // Prefer Smile&Pay when configured, else Stripe, else demo / 503.
-  if (smilepayConfigured()) {
+  // Paynow has its own route (/api/billing/paynow/checkout). Here: Smile&Pay
+  // when it is the active provider, else Stripe, else demo / 503.
+  const provider = activeBillingProvider();
+  if (provider === "smilepay") {
     const orderReference = makeOrderReference(session.organizationId, plan);
     const amountCents = Math.round(planMeta.priceUsd * 100);
 
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
     }
   }
 
-  if (!stripeConfigured()) {
+  if (provider !== "stripe" || !stripeConfigured()) {
     if (process.env.ALLOW_DEMO_BILLING !== "true") {
       return NextResponse.json(
         { error: "Paid plans are not open yet. Your trial still works until it expires." },

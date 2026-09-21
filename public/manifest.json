@@ -2,33 +2,44 @@
   "id": "/",
   "name": "PlatePing",
   "short_name": "PlatePing",
-  "description": "Watch Zimbabwe number plates against published ZRP robot lists.",
-  "start_url": "/app",
+  "description": "Watch Zimbabwe plates against published ZRP lists. Notification service only — we do not take fine payments.",
+  "start_url": "/app?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "prefer_related_applications": false,
   "orientation": "portrait",
   "background_color": "#07140e",
   "theme_color": "#07140e",
   "lang": "en",
-  "categories": ["utilities", "finance"],
-  "icons": [
+  "dir": "ltr",
+  "categories": ["utilities", "travel"],
+  "shortcuts": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "name": "Check a registration",
+      "short_name": "Check",
+      "url": "/app?source=shortcut",
+      "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "name": "Watched plates",
+      "short_name": "Plates",
+      "url": "/app/vehicles?source=shortcut",
+      "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "name": "Alerts",
+      "short_name": "Alerts",
+      "url": "/app/alerts?source=shortcut",
+      "icons": [{ "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png" }]
     }
+  ],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

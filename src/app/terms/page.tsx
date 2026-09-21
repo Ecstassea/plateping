@@ -72,7 +72,7 @@ export default function TermsPage() {
       <h2>Plans and payment</h2>
       <p>
         Plan limits (plates and seats) are described on the site. Trials last seven days unless we say
-        otherwise. When Smile&Pay / a stated processor is connected, each successful subscription payment
+        otherwise. When Paynow, Smile&Pay or another stated processor is connected, each successful subscription payment
         grants about 30 days of watching and alerts until you renew or cancel. Fees are for the software service, not for settling a fine. Chargebacks or unpaid
         invoices may pause watching.
       </p>

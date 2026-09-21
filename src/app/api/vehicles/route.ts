@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getLimits } from "@/lib/plans";
+import { formatPlateCap, getLimits, isAtCap } from "@/lib/plans";
 import { notifyWatchers } from "@/lib/notify";
 import { displayPlate, isPlausiblePlate, normalizePlate, ROBOT_OFFENCE } from "@/lib/plates";
+import { rateLimit } from "@/lib/rate-limit";
+import { badRequest, readJson, rejectUntrustedOrigin, tooMany } from "@/lib/request";
 import { lookupPlate } from "@/lib/scraper";
+import { listVehicles } from "@/lib/vehicles";
 
 const schema = z.object({
   plate: z.string().trim().min(4).max(16),
@@ -18,48 +21,40 @@ export async function GET() {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
 
-  const vehicles = await prisma.vehicle.findMany({
-    where: { organizationId: session.organizationId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const plates = vehicles.map((vehicle) => vehicle.plateNormalized);
-  const fines = await prisma.fine.findMany({
-    where: { plateNormalized: { in: plates } },
-  });
-
   return NextResponse.json({
-    vehicles: vehicles.map((vehicle) => ({
-      ...vehicle,
-      listed: fines.some((fine) => fine.plateNormalized === vehicle.plateNormalized),
-    })),
+    vehicles: await listVehicles(session.organizationId),
     limits: getLimits(session.organization),
   });
 }
 
 export async function POST(request: Request) {
+  const originError = rejectUntrustedOrigin(request);
+  if (originError) {
+    return originError;
+  }
+
   const session = await requireSession();
   if (!session) {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
 
-  const parsed = schema.safeParse(await request.json());
+  const parsed = schema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Enter a registration number." }, { status: 400 });
+    return badRequest("Enter a registration number.");
   }
 
   const plateNormalized = normalizePlate(parsed.data.plate);
   if (!isPlausiblePlate(plateNormalized)) {
-    return NextResponse.json({ error: "That registration does not look valid." }, { status: 400 });
+    return badRequest("That registration does not look valid.");
   }
 
   const limits = getLimits(session.organization);
   const count = await prisma.vehicle.count({
     where: { organizationId: session.organizationId },
   });
-  if (count >= limits.vehicles) {
+  if (isAtCap(count, limits.vehicles)) {
     return NextResponse.json(
-      { error: `${limits.label} covers ${limits.vehicles} plate${limits.vehicles === 1 ? "" : "s"}. Upgrade to watch more.` },
+      { error: `${limits.label} covers ${formatPlateCap(limits.vehicles)}. Upgrade to a larger fleet plan to watch more.` },
       { status: 402 },
     );
   }
@@ -89,6 +84,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const originError = rejectUntrustedOrigin(request);
+  if (originError) {
+    return originError;
+  }
+
   const session = await requireSession();
   if (!session) {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
@@ -96,8 +96,13 @@ export async function DELETE(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "Missing vehicle." }, { status: 400 });
+  if (!id || id.length > 40) {
+    return badRequest("Missing vehicle.");
+  }
+
+  const deleteLimit = await rateLimit(`vehicles:delete:${session.organizationId}`, 30, 60 * 60 * 1000);
+  if (!deleteLimit.ok) {
+    return tooMany(deleteLimit);
   }
 
   await prisma.vehicle.deleteMany({

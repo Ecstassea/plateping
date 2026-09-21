@@ -64,6 +64,15 @@ model Payment {
   rawStatus        String?
   paidAt           DateTime?
   periodEnd        DateTime?
+  /// Who started the checkout (owner at the time).
+  userId           String?
+  /// Calendar months bought in this payment (Paynow periods; Smile&Pay is 1).
+  months           Int       @default(1)
+  /// Paynow's per-transaction status URL, stored at checkout so callbacks are
+  /// confirmed against a URL we obtained ourselves.
+  pollUrl          String?
+  /// Human-readable reason when something needs a person to look at it.
+  note             String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -128,7 +137,7 @@ model Notification {
   id              String    @id @default(cuid())
   userId          String
   organizationId  String
-  plateNormalized String
+  plateNormalized String?
   title           String
   body            String
   readAt          DateTime?

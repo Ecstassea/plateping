@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSession, requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getLimits, isEntitled } from "@/lib/plans";
+import { badRequest, readJson, rejectUntrustedOrigin } from "@/lib/request";
 
 export async function GET() {
   const session = await requireSession();
@@ -10,11 +12,12 @@ export async function GET() {
   }
 
   const unread = await prisma.notification.count({
-    where: { userId: session.userId, organizationId: session.organizationId, readAt: null },
+    where: { userId: session.userId, organizationId: session.organizationId, readAt: { equals: null } },
   });
 
   const lastSync = await prisma.syncRun.findFirst({
     orderBy: { createdAt: "desc" },
+    select: { createdAt: true, platesFound: true, source: true, status: true },
   });
 
   return NextResponse.json({
@@ -23,7 +26,14 @@ export async function GET() {
       name: session.user.name,
       email: session.user.email,
     },
-    organization: session.organization,
+    organization: {
+      id: session.organization.id,
+      name: session.organization.name,
+      type: session.organization.type,
+      plan: session.organization.plan,
+      subscriptionStatus: session.organization.subscriptionStatus,
+      currentPeriodEnd: session.organization.currentPeriodEnd,
+    },
     role: session.role,
     limits: getLimits(session.organization),
     entitled: isEntitled(session.organization),
@@ -32,22 +42,31 @@ export async function GET() {
   });
 }
 
+const switchSchema = z.object({
+  orgId: z.string().trim().min(8).max(40),
+});
+
 export async function POST(request: Request) {
+  const originError = rejectUntrustedOrigin(request);
+  if (originError) {
+    return originError;
+  }
+
   const session = await requireSession();
   if (!session) {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
 
-  const body = (await request.json()) as { orgId?: string };
-  if (!body.orgId) {
-    return NextResponse.json({ error: "Missing workspace." }, { status: 400 });
+  const parsed = switchSchema.safeParse(await readJson(request));
+  if (!parsed.success) {
+    return badRequest("Missing workspace.");
   }
 
   const membership = await prisma.membership.findUnique({
     where: {
       userId_organizationId: {
         userId: session.userId,
-        organizationId: body.orgId,
+        organizationId: parsed.data.orgId,
       },
     },
   });

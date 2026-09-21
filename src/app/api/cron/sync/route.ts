@@ -1,18 +1,28 @@
 import { NextResponse } from "next/server";
+import { pruneRateLimits } from "@/lib/rate-limit";
+import { remindExpiringPlans } from "@/lib/renewals";
+import { bearerMatches } from "@/lib/request";
 import { syncFineLists } from "@/lib/scraper";
 
-export async function GET(request: Request) {
+async function authorized(request: Request) {
   const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization");
-  const url = new URL(request.url);
-  const token = url.searchParams.get("secret");
+  if (!secret) {
+    return false;
+  }
 
-  if (!secret || (header !== `Bearer ${secret}` && token !== secret)) {
+  return bearerMatches(request.headers.get("authorization"), secret);
+}
+
+export async function GET(request: Request) {
+  if (!(await authorized(request))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const result = await syncFineLists();
-  return NextResponse.json(result);
+  // Housekeeping that rides along with the six-hourly sync.
+  const renewalNotices = await remindExpiringPlans().catch(() => 0);
+  await pruneRateLimits().catch(() => undefined);
+  return NextResponse.json({ ...result, renewalNotices });
 }
 
 export async function POST(request: Request) {

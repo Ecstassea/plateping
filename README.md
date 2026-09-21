@@ -57,7 +57,14 @@ Production uses Postgres. Set `DATABASE_URL` (pooled) and `DIRECT_URL` (direct N
 2. Bind the app with `npm run start` so it listens on `0.0.0.0:$PORT`.
 3. Add a Render cron job that `curl`s `/api/cron/sync` with the bearer secret.
 
-### Smile&Pay (ZB Bank) — preferred in Zimbabwe
+### Paynow (Zimbabwe) — preferred once configured
+
+1. Paynow dashboard → Receive Payments → Integrations → your web integration: copy the Integration ID and Key.
+2. Set `PAYNOW_INTEGRATION_ID`, `PAYNOW_INTEGRATION_KEY`, `PAYNOW_MERCHANT_EMAIL`, and `PAYNOW_TEST_MODE=true` until Paynow marks the integration live.
+3. Result URL is `/api/billing/paynow/result`; `APP_URL` must be the public HTTPS address.
+4. `npm run paynow:check` proves the keys before deploying. Plans are bought for 1, 3 or 12 months. Details and the test plan: `docs/PAYNOW.md`.
+
+### Smile&Pay (ZB Bank)
 
 Plan subscriptions only (Starter / Family / Fleet). **Never** used for ZRP fine payments.
 
@@ -69,7 +76,7 @@ Plan subscriptions only (Starter / Family / Fleet). **Never** used for ZRP fine 
 3. Webhook (result URL): `/api/billing/smilepay/webhook` (optionally append `SMILEPAY_WEBHOOK_SECRET_PATH`)
 4. Callbacks are **unsigned**. PlatePing always re-checks payment status with the authenticated API before activating a plan.
 
-Prefer order when both gateways are configured: **Smile&Pay → Stripe → demo/`503`**.
+Prefer order when several gateways are configured: **Paynow → Smile&Pay → Stripe → demo/`503`**. Force one with `BILLING_PROVIDER=paynow|smilepay|stripe`.
 
 Each successful payment sets `subscriptionStatus=active` and `currentPeriodEnd ≈ now + 30 days`. Renewal is a new checkout (not Stripe-style auto-debit).
 
@@ -85,7 +92,7 @@ Create three products (**Starter**, **Family**, and **Fleet**, not three prices 
 
 Webhook URL: `/api/billing/webhook`.
 
-If neither Smile&Pay nor Stripe is set, plan buttons return 503 unless `ALLOW_DEMO_BILLING=true` (local only).
+If no gateway is set, plan buttons return 503 unless `ALLOW_DEMO_BILLING=true` (local only).
 
 Email alerts need `RESEND_API_KEY` and `ALERT_FROM_EMAIL`. In-app alerts still work without email.
 

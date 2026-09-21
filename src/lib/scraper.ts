@@ -3,17 +3,19 @@ import { join } from "node:path";
 import { prisma } from "@/lib/db";
 import { notifyWatchers } from "@/lib/notify";
 import {
-  ESTIMATED_FINE,
+  OFFICIAL_ZRP_LIST_STATEMENT,
+  OFFICIAL_ZRP_LIST_URL,
   ROBOT_OFFENCE,
+  ZRP_GUIDANCE,
+  ZRP_LOCATION,
   displayPlate,
   isPlausiblePlate,
   normalizePlate,
+  parsePublishedDate,
 } from "@/lib/plates";
 
 const NETLIFY_PLATES = "https://zrp.netlify.app/plateNumbers.js";
-const ZRP_LISTS = [
-  "https://zrp.gov.zw/?p=8290",
-];
+const ZRP_LISTS = [OFFICIAL_ZRP_LIST_URL];
 
 const PLATE_TOKEN = /['"]([A-Za-z0-9]{4,10})['"]/g;
 const PAGE_PLATE = /\b([A-Z]{3}\s?\d{3,4}|[A-Z0-9]{5,8})\b/g;
@@ -40,9 +42,37 @@ function extractPagePlates(text: string) {
   return uniquePlates([...text.matchAll(PAGE_PLATE)].map((match) => match[1]));
 }
 
+// A list page is a few hundred kilobytes at most. Anything past this is not a
+// plate list and must not be pulled into memory.
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+
+async function readTextCapped(response: Response, maxBytes: number) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    return (await response.text()).slice(0, maxBytes);
+  }
+
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel();
+      throw new Error(`${response.url} is larger than ${maxBytes} bytes`);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 async function fetchText(url: string) {
   const response = await fetch(url, {
     cache: "no-store",
+    redirect: "follow",
     headers: {
       Accept: "text/plain,text/javascript,text/html,*/*",
       "User-Agent": "PlatePing/1.0 (public traffic-list watcher)",
@@ -52,7 +82,7 @@ async function fetchText(url: string) {
   if (!response.ok) {
     throw new Error(`${url} returned ${response.status}`);
   }
-  return response.text();
+  return readTextCapped(response, MAX_BODY_BYTES);
 }
 
 function fallbackPlates() {
@@ -70,20 +100,27 @@ async function upsertListedPlates(args: {
   source: string;
   sourceUrl: string;
   location: string;
+  statementTitle?: string | null;
+  publishedAt?: Date | null;
 }) {
   let created = 0;
   for (const plate of args.plates) {
-    const existing = await prisma.fine.findUnique({
-      where: {
-        plateNormalized_source_offence: {
-          plateNormalized: plate,
-          source: args.source,
-          offence: ROBOT_OFFENCE,
-        },
-      },
+    const existing = await prisma.fine.findFirst({
+      where: { plateNormalized: plate, source: args.source },
     });
 
     if (existing) {
+      await prisma.fine.update({
+        where: { id: existing.id },
+        data: {
+          offence: ROBOT_OFFENCE,
+          location: args.location,
+          sourceUrl: args.sourceUrl,
+          statementTitle: args.statementTitle || existing.statementTitle,
+          listedAt: args.publishedAt ?? existing.listedAt,
+          estimatedUsd: null,
+        },
+      });
       continue;
     }
 
@@ -95,8 +132,9 @@ async function upsertListedPlates(args: {
         location: args.location,
         source: args.source,
         sourceUrl: args.sourceUrl,
-        listedAt: new Date(),
-        estimatedUsd: ESTIMATED_FINE,
+        statementTitle: args.statementTitle || null,
+        listedAt: args.publishedAt ?? new Date(),
+        estimatedUsd: null,
         status: "listed",
       },
     });
@@ -108,7 +146,13 @@ async function upsertListedPlates(args: {
 
 async function runSource(
   source: string,
-  work: () => Promise<{ plates: string[]; sourceUrl: string; location: string }>,
+  work: () => Promise<{
+    plates: string[];
+    sourceUrl: string;
+    location: string;
+    statementTitle?: string | null;
+    publishedAt?: Date | null;
+  }>,
 ) {
   try {
     const result = await work();
@@ -117,6 +161,8 @@ async function runSource(
       source,
       sourceUrl: result.sourceUrl,
       location: result.location,
+      statementTitle: result.statementTitle,
+      publishedAt: result.publishedAt,
     });
     await prisma.syncRun.create({
       data: {
@@ -143,27 +189,45 @@ async function runSource(
 export async function syncFineLists() {
   const netlify = await runSource("zrp.netlify.app", async () => {
     try {
-      const text = await fetchText(NETLIFY_PLATES);
+      const [script, page] = await Promise.all([
+        fetchText(NETLIFY_PLATES),
+        fetchText("https://zrp.netlify.app/").catch(() => ""),
+      ]);
       return {
-        plates: extractQuotedPlates(text),
-        sourceUrl: "https://zrp.netlify.app/",
-        location: "Harare robot / ETMS lists republished on zrp.netlify.app",
+        plates: extractQuotedPlates(script),
+        sourceUrl: OFFICIAL_ZRP_LIST_URL,
+        location: ZRP_LOCATION,
+        statementTitle: OFFICIAL_ZRP_LIST_STATEMENT.title,
+        publishedAt: parsePublishedDate(page) ?? parsePublishedDate(script),
       };
     } catch {
       return {
         plates: fallbackPlates(),
-        sourceUrl: "https://zrp.netlify.app/",
-        location: "Cached public ZRP robot list",
+        sourceUrl: OFFICIAL_ZRP_LIST_URL,
+        location: ZRP_LOCATION,
+        statementTitle: OFFICIAL_ZRP_LIST_STATEMENT.title,
+        publishedAt: null,
       };
     }
   });
 
   const official = await runSource("zrp.gov.zw", async () => {
     const plates: string[] = [];
+    let statementTitle: string | null = null;
+    let publishedAt: Date | null = null;
     for (const url of ZRP_LISTS) {
       try {
         const html = await fetchText(url);
         plates.push(...extractPagePlates(html));
+        const heading = html.match(
+          /ZRP PRESS STATEMENT[^<]{10,180}|LIST OF VEHICLES CAPTURED[^<]{10,160}/i,
+        );
+        if (heading) {
+          statementTitle = heading[0].replace(/\s+/g, " ").trim();
+          publishedAt = parsePublishedDate(heading[0]) ?? parsePublishedDate(html);
+        } else {
+          publishedAt = parsePublishedDate(html);
+        }
       } catch {
         // Official site is often down; other sources still count.
       }
@@ -171,7 +235,9 @@ export async function syncFineLists() {
     return {
       plates: uniquePlates(plates),
       sourceUrl: ZRP_LISTS[0],
-      location: "Harare CBD traffic lights — ZRP press list",
+      location: ZRP_LOCATION,
+      statementTitle: statementTitle || OFFICIAL_ZRP_LIST_STATEMENT.title,
+      publishedAt,
     };
   });
 
@@ -184,10 +250,18 @@ export async function lookupPlate(rawPlate: string) {
     return { ok: false as const, error: "Enter a valid Zimbabwe registration, e.g. ADX 5897." };
   }
 
-  const fines = await prisma.fine.findMany({
-    where: { plateNormalized },
-    orderBy: { createdAt: "desc" },
-  });
+  const [fines, listStatus] = await Promise.all([
+    prisma.fine.findMany({
+      where: { plateNormalized },
+      orderBy: [{ listedAt: "desc" }, { createdAt: "desc" }],
+    }),
+    prisma.syncRun.findMany({
+      where: { status: "ok" },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      select: { source: true, createdAt: true, platesFound: true },
+    }),
+  ]);
 
   return {
     ok: true as const,
@@ -195,5 +269,7 @@ export async function lookupPlate(rawPlate: string) {
     plateDisplay: displayPlate(plateNormalized),
     listed: fines.length > 0,
     fines,
+    guidance: ZRP_GUIDANCE,
+    listStatus,
   };
 }
