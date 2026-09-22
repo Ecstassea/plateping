@@ -53,15 +53,18 @@ export function JoinForm() {
 
   return (
     <div className="site-wrap max-w-lg py-12">
-      <h1 className="text-3xl font-semibold">Join a company fleet</h1>
+      <h1 className="text-3xl font-semibold">
+        {fromLink ? "You have been invited to a fleet" : "Join a company fleet"}
+      </h1>
       <p className="mt-3 text-sm leading-6 text-muted">
-        Staff do not get a shared login. The owner keeps the invite code private. After you join,
-        everyone in that workspace sees the same plates and alerts. PlatePing is a notification
-        service only — there is no way here to pay a traffic fine. Only watch cars the company has
-        authorised.
+        {fromLink
+          ? "Your code is already filled in below. Tap Join workspace and you will see the company's plates and alerts. You keep your own login; never use anyone else's password."
+          : "Staff do not get a shared login. The owner keeps the invite code private. After you join, everyone in that workspace sees the same plates and alerts."}{" "}
+        PlatePing is a notification service only — there is no way here to pay a traffic fine. Only watch cars
+        the company has authorised.
       </p>
 
-      <ol className="mt-8 space-y-4">
+      <ol className={`mt-8 space-y-4 ${fromLink ? "hidden" : ""}`}>
         {steps.map((step, index) => (
           <li key={step.title} className="card p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-gold">Step {index + 1}</p>
