@@ -12,20 +12,36 @@ export default async function TeamPage() {
     return null;
   }
 
-  const members = await prisma.membership.findMany({
-    where: { organizationId: session.organizationId },
-    include: { user: { select: { id: true, name: true, email: true } } },
-    orderBy: { createdAt: "asc" },
-  });
+  const [members, myWorkspaces] = await Promise.all([
+    prisma.membership.findMany({
+      where: { organizationId: session.organizationId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    // Someone who joined a fleet still owns the workspace they registered with,
+    // so they need a way back to it.
+    prisma.membership.findMany({
+      where: { userId: session.userId },
+      include: { organization: { select: { id: true, name: true, type: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
   const limits = getLimits(session.organization);
 
   return (
     <TabScreen>
       <TeamClient
         organization={{
+          id: session.organization.id,
           name: session.organization.name,
           inviteCode: isOwner(session) ? session.organization.inviteCode : null,
         }}
+        workspaces={myWorkspaces.map((m) => ({
+          id: m.organization.id,
+          name: m.organization.name,
+          type: m.organization.type,
+          role: m.role,
+        }))}
         limits={{ seats: limits.seats, label: limits.label }}
         members={members.map((member) => ({
           id: member.id,

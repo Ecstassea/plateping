@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 const steps = [
@@ -21,7 +21,10 @@ const steps = [
 
 export function JoinForm() {
   const router = useRouter();
-  const [inviteCode, setInviteCode] = useState("");
+  const params = useSearchParams();
+  // An invite link carries the code, so nobody has to type it.
+  const fromLink = (params.get("code") ?? "").trim().toUpperCase().slice(0, 16);
+  const [inviteCode, setInviteCode] = useState(fromLink);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +40,8 @@ export function JoinForm() {
     const data = (await response.json()) as { error?: string };
     setLoading(false);
     if (response.status === 401) {
-      router.replace("/login?next=/join");
+      // Not signed in yet: take the code along so they land back here joined.
+      router.replace(`/register?join=${encodeURIComponent(inviteCode.trim().toUpperCase())}`);
       return;
     }
     if (!response.ok) {

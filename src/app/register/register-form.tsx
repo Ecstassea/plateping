@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { cleanInviteCode, joinWithCode } from "@/lib/join";
 import { MARKETING_CONSENT } from "@/lib/mailing-list";
 
 export function RegisterForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  // Arrived from an invite link: sign them up, then put them in that fleet.
+  const inviteCode = cleanInviteCode(params.get("join"));
   const [accountType, setAccountType] = useState<"personal" | "company">("personal");
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -39,18 +43,37 @@ export function RegisterForm() {
       }),
     });
     const data = (await response.json()) as { error?: string };
-    setLoading(false);
     if (!response.ok) {
+      setLoading(false);
       setError(data.error || "Could not create the account.");
       return;
     }
+
+    if (inviteCode) {
+      const joined = await joinWithCode(inviteCode);
+      setLoading(false);
+      router.replace(joined ? "/app/team" : `/join?code=${inviteCode}`);
+      return;
+    }
+
+    setLoading(false);
     router.replace("/app");
   }
 
   return (
     <div className="site-wrap max-w-md py-12">
-      <p className="text-xs uppercase tracking-[0.2em] text-green">7-day trial included</p>
-      <h1 className="mt-3 text-3xl font-semibold">Watch your plates</h1>
+      <p className="text-xs uppercase tracking-[0.2em] text-green">
+        {inviteCode ? "Joining a fleet" : "7-day trial included"}
+      </p>
+      <h1 className="mt-3 text-3xl font-semibold">
+        {inviteCode ? "Create your login" : "Watch your plates"}
+      </h1>
+      {inviteCode ? (
+        <p className="mt-3 text-sm leading-6 text-muted">
+          You were invited with code <span className="text-ink">{inviteCode}</span>. Make your own login and we
+          will put you in that workspace straight away. Never use someone else&apos;s password.
+        </p>
+      ) : null}
       <div className="mt-6 grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -147,12 +170,12 @@ export function RegisterForm() {
         </label>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button className="btn btn-primary" disabled={loading} type="submit">
-          {loading ? "Creating…" : "Start watching"}
+          {loading ? "Creating…" : inviteCode ? "Create login and join" : "Start watching"}
         </button>
       </form>
       <p className="mt-6 text-sm text-muted">
         Already have an account?{" "}
-        <Link className="text-green" href="/login">
+        <Link className="text-green" href={inviteCode ? `/login?join=${inviteCode}` : "/login"}>
           Sign in
         </Link>
       </p>

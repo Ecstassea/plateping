@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { SiteChrome } from "@/components/SiteChrome";
 import { JoinForm } from "./join-form";
 
@@ -12,7 +13,9 @@ export default async function JoinPage() {
   await connection();
   return (
     <SiteChrome>
-      <JoinForm />
+      <Suspense fallback={<p className="site-wrap py-12 text-sm text-muted">Loading…</p>}>
+        <JoinForm />
+      </Suspense>
     </SiteChrome>
   );
 }
