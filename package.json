@@ -14,7 +14,8 @@
     "icons": "node scripts/icons/build-icons.mjs",
     "test:billing": "tsx --test src/lib/__tests__/billing-smilepay.test.ts",
     "test": "node --import tsx --test src/lib/*.test.ts",
-    "paynow:check": "tsx scripts/paynow-check.mts"
+    "paynow:check": "tsx scripts/paynow-check.mts",
+    "paynow:live?": "tsx scripts/paynow-live-probe.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
