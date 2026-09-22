@@ -10,7 +10,8 @@ type InstallEvent = Event & {
 };
 
 // prompt          Android Chrome, Samsung Internet, desktop Chrome: a real one-tap install.
-// ios-safari      iPhone in Safari: Apple only allows it through the Share menu.
+// ios-safari-26   iPhone on iOS 26 or newer: Share now lives behind the ••• menu.
+// ios-safari      iPhone on iOS 18 or older: Share is the button in the bottom bar.
 // ios-browser     iPhone in Chrome, Firefox, Edge: their own Share menu can add it too.
 // in-app-ios      Instagram, WhatsApp, Facebook etc. on iPhone: must open Safari first.
 // in-app-android  Same apps on Android: one tap can hand the page to Chrome.
@@ -18,6 +19,7 @@ type InstallEvent = Event & {
 // desktop         A computer: point them at their phone.
 type Platform =
   | "prompt"
+  | "ios-safari-26"
   | "ios-safari"
   | "ios-browser"
   | "in-app-ios"
@@ -78,6 +80,12 @@ function inAppName() {
   return "this app";
 }
 
+/** Major iOS version, or 0 when it cannot be read. */
+function iosMajorVersion(ua: string) {
+  const match = ua.match(/OS (\d+)[_.]/) || ua.match(/Version\/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
 function detectPlatform(): Platform {
   const ua = navigator.userAgent;
   const ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -86,7 +94,11 @@ function detectPlatform(): Platform {
     if (inApp) {
       return "in-app-ios";
     }
-    return /crios|fxios|edgios|opios|duckduckgo|brave/i.test(ua) ? "ios-browser" : "ios-safari";
+    if (/crios|fxios|edgios|opios|duckduckgo|brave/i.test(ua)) {
+      return "ios-browser";
+    }
+    // iOS 26 moved Share out of the bottom bar and into the ••• menu.
+    return iosMajorVersion(ua) >= 26 ? "ios-safari-26" : "ios-safari";
   }
   if (/android/i.test(ua)) {
     return inApp ? "in-app-android" : "android-browser";
@@ -114,6 +126,16 @@ function AddGlyph() {
     <svg aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24">
       <rect height="15" rx="4" width="15" x="4.5" y="4.5" />
       <path d="M12 8.75v6.5M8.75 12h6.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MoreGlyph() {
+  return (
+    <svg aria-hidden="true" className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="19" cy="12" r="1.9" />
     </svg>
   );
 }
@@ -222,26 +244,38 @@ function SheetBody({ platform, onDone }: { platform: Platform; onDone: () => voi
     );
   }
 
-  if (platform === "ios-safari") {
+  if (platform === "ios-safari-26" || platform === "ios-safari") {
+    const newIos = platform === "ios-safari-26";
     return (
       <>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Apple does not allow a one-tap install, so Safari does it in three taps.
+          Apple does not let any website install itself, so Safari does it in three taps. It takes about ten
+          seconds.
         </p>
         <ol className="mt-5 space-y-4">
-          <Step glyph={<ShareGlyph />} index={1}>
-            Tap <span className="text-ink">Share</span>: the square with an arrow, in the bar at the bottom of the screen.
-            On iPad it is at the top right.
-          </Step>
+          {newIos ? (
+            <Step glyph={<MoreGlyph />} index={1}>
+              Tap the <span className="text-ink">three dots</span> just right of the web address at the bottom,
+              then tap <span className="text-ink">Share</span>.
+            </Step>
+          ) : (
+            <Step glyph={<ShareGlyph />} index={1}>
+              Tap <span className="text-ink">Share</span>, the square with an arrow pointing up, in the bar at the
+              bottom of the screen. On iPad it is at the top right.
+            </Step>
+          )}
           <Step glyph={<AddGlyph />} index={2}>
             Scroll down the grey list and tap <span className="text-ink">Add to Home Screen</span>.
           </Step>
           <Step index={3}>
-            Tap <span className="text-ink">Add</span> at the top right. PlatePing lands next to your other apps.
+            Tap <span className="text-ink">Add</span> at the top right.
+            {newIos ? " Leave Open as Web App switched on." : ""} PlatePing lands next to your other apps.
           </Step>
         </ol>
         <p className="mt-5 text-xs leading-5 text-muted">
-          Alert banners on iPhone only work from the home-screen app, not from a Safari tab.
+          Cannot find it? Tap the <span className="text-ink">aA</span> or <span className="text-ink">•••</span>{" "}
+          button beside the address. Alert banners on iPhone only work from the home-screen app, never from a
+          Safari tab.
         </p>
         <button className="btn btn-ghost mt-4 !w-full" onClick={onDone} type="button">
           Got it
@@ -284,7 +318,9 @@ function SheetBody({ platform, onDone }: { platform: Platform; onDone: () => voi
             copy the link below and paste it into Safari.
           </Step>
           <Step glyph={<ShareGlyph />} index={2}>
-            In Safari tap <span className="text-ink">Share</span>, then <span className="text-ink">Add to Home Screen</span>.
+            In Safari tap <span className="text-ink">Share</span> (on newer iPhones it is behind the{" "}
+            <span className="text-ink">•••</span> menu beside the address), then{" "}
+            <span className="text-ink">Add to Home Screen</span>.
           </Step>
         </ol>
         <CopyLinkButton primary />
@@ -336,6 +372,32 @@ function SheetBody({ platform, onDone }: { platform: Platform; onDone: () => voi
       <CopyLinkButton primary />
     </>
   );
+}
+
+/** What the current browser can do about installing: for inline guidance. */
+export function useInstallState() {
+  const platform = useInstallPlatform();
+  return {
+    platform,
+    installed: platform === null,
+    oneTap: platform === "prompt",
+    isIphone: platform === "ios-safari-26" || platform === "ios-safari" || platform === "ios-browser" || platform === "in-app-ios",
+  };
+}
+
+/** Runs the browser's own install prompt. Only meaningful when oneTap is true. */
+export async function runInstallPrompt() {
+  if (!deferredPrompt) {
+    return false;
+  }
+  await deferredPrompt.prompt();
+  const choice = await deferredPrompt.userChoice;
+  if (choice.outcome === "accepted") {
+    deferredPrompt = null;
+    emit();
+    return true;
+  }
+  return false;
 }
 
 /** Sticky prompt plus the shared sheet. Mount once, near the root. */
