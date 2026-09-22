@@ -16,6 +16,11 @@ model User {
   phone          String?
   marketingOptIn  Boolean   @default(true)
   termsAcceptedAt DateTime?
+  /// This person's own code for inviting friends. Not a fleet invite code:
+  /// it credits the referrer, it does not share a workspace.
+  referralCode    String?   @unique
+  /// Set at sign-up so obvious referral farming is visible later.
+  signupIp        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -23,6 +28,9 @@ model User {
   notifications Notification[]
   mailingList   MailingList?
   pushSubscriptions PushSubscription[]
+  referralsMade Referral[]       @relation("referrer")
+  referredBy    Referral?        @relation("referred")
+  referralRewards ReferralReward[]
 
   @@index([email])
 }
@@ -218,4 +226,46 @@ model Feedback {
 
   @@index([createdAt])
   @@index([status])
+}
+
+/// One person who signed up through someone else's referral link.
+model Referral {
+  id             String   @id @default(cuid())
+  referrerUserId String
+  /// One row per new account, so a sign-up can never be counted twice.
+  referredUserId String   @unique
+  code           String
+  referredEmail  String
+  signupIp       String?
+  /// Cleared by hand if a sign-up turns out to be fake; uncounted referrals
+  /// do not move anyone towards a reward.
+  counted        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  referrer User @relation("referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId, createdAt])
+  @@index([code])
+}
+
+/// A free month earned by referring people. One row per milestone reached,
+/// so the same ten sign-ups can never pay out twice.
+model ReferralReward {
+  id              String   @id @default(cuid())
+  userId          String
+  organizationId  String?
+  months          Int      @default(1)
+  /// The referral count this reward was for: 10, 20, 30 and so on.
+  atReferralCount Int
+  plan            String?
+  periodEnd       DateTime?
+  /// Set when the person owned no workspace at the time; claimed later.
+  pending         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, atReferralCount])
+  @@index([userId])
 }

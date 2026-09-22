@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { PwaProvider } from "@/components/PwaProvider";
+import { ReferralCapture } from "@/components/ReferralCapture";
 import "./globals.css";
 
 const geist = Geist({
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full bg-bg text-ink">
         <PwaProvider />
+        <ReferralCapture />
         {children}
         <InstallPrompt />
       </body>

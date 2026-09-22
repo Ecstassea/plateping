@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { storedReferralCode } from "@/components/ReferralCapture";
 import { cleanInviteCode, joinWithCode } from "@/lib/join";
 import { MARKETING_CONSENT } from "@/lib/mailing-list";
 
@@ -40,6 +41,8 @@ export function RegisterForm() {
         companyName,
         marketingOptIn,
         termsAccepted,
+        // Whoever shared the link that brought them here.
+        ref: storedReferralCode() || undefined,
       }),
     });
     const data = (await response.json()) as { error?: string };

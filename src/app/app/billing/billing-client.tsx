@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { BILLING_PERIODS, periodLabel, periodPriceUsd, type BillingPeriod } from "@/lib/billing";
+import { ReferralCard } from "@/components/ReferralCard";
 import type { BillingProvider } from "@/lib/billing-provider";
 import {
   COMPANY_PLANS,
@@ -375,6 +376,8 @@ export function BillingClient({
           onSubscribe={subscribe}
         />
       ))}
+
+      <ReferralCard />
 
       {payments.length > 0 ? (
         <div className="space-y-2">

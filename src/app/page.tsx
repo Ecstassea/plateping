@@ -81,6 +81,10 @@ const faqs = [
     a: "Checking a plate is free. Watching plates and getting alerts starts at $2 a month for two plates, paid with EcoCash, OneMoney, InnBucks, ZimSwitch or card. New accounts get seven days free.",
   },
   {
+    q: "How do I get a free month?",
+    a: "Share your invite link, on the Plan tab once you are signed in. Every ten people who create an account through it earn you one free month, added on top of whatever you already have. There is no cap. Accounts made just to collect rewards are removed and do not count.",
+  },
+  {
     q: "Does it work on iPhone?",
     a: "Yes. On Android it installs with one tap. On iPhone, Safari adds it to the home screen in three taps; tap Add to phone anywhere on this page and we show you exactly where to press.",
   },
@@ -259,6 +263,16 @@ export default function HomePage() {
               A plan pays for watching plates and sending alerts. It never pays a fine. Pay for one, three or
               twelve months at a time with EcoCash, OneMoney, InnBucks, ZimSwitch or card. No card needed for the
               trial.
+            </p>
+            <p className="mt-4 inline-flex max-w-2xl items-start gap-2 rounded-2xl border border-green/40 bg-green/5 p-4 text-sm leading-6">
+              <span aria-hidden="true">🎁</span>
+              <span>
+                <span className="font-medium">Ten friends, one month free.</span>{" "}
+                <span className="text-muted">
+                  Every account that signs up with your link counts. Get another free month for every ten, with no
+                  limit. Your link is on the Plan tab once you are in.
+                </span>
+              </span>
             </p>
             <h3 className="mt-8 text-lg font-semibold">Personal</h3>
             <PlanCards ids={PERSONAL_PLANS} columns={2} popular="starter" />

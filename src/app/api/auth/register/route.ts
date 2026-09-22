@@ -4,6 +4,7 @@ import { createSession, hashPassword, randomInviteCode, verifyPasswordAgainstDum
 import { prisma } from "@/lib/db";
 import { upsertMailingList } from "@/lib/mailing-list";
 import { rateLimit } from "@/lib/rate-limit";
+import { recordReferral } from "@/lib/referrals";
 import { badRequest, clientIp, readJson, rejectUntrustedOrigin, tooMany } from "@/lib/request";
 
 const schema = z.object({
@@ -14,6 +15,8 @@ const schema = z.object({
   companyName: z.string().trim().max(80).optional(),
   marketingOptIn: z.boolean().optional(),
   termsAccepted: z.literal(true),
+  /** Referral code of whoever sent them, from a ?ref= link. */
+  ref: z.string().trim().max(12).optional(),
 });
 
 export async function POST(request: Request) {
@@ -47,6 +50,7 @@ export async function POST(request: Request) {
 
   const marketingOptIn = parsed.data.marketingOptIn !== false;
 
+  const signupIp = clientIp(request);
   const user = await prisma.user.create({
     data: {
       name: parsed.data.name,
@@ -54,6 +58,7 @@ export async function POST(request: Request) {
       passwordHash: await hashPassword(parsed.data.password),
       marketingOptIn,
       termsAcceptedAt: new Date(),
+      signupIp,
       memberships: {
         create: {
           role: "owner",
@@ -72,6 +77,16 @@ export async function POST(request: Request) {
     },
     include: { memberships: true },
   });
+
+  // Credit whoever referred them. A problem here must never fail the sign-up.
+  if (parsed.data.ref) {
+    await recordReferral({
+      code: parsed.data.ref,
+      referredUserId: user.id,
+      referredEmail: user.email,
+      signupIp,
+    }).catch(() => undefined);
+  }
 
   await upsertMailingList({
     email: user.email,

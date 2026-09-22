@@ -824,3 +824,20 @@ body {
 .phone-tab-active {
   color: var(--green);
 }
+
+/* Referral progress bar. */
+.progress {
+  height: 8px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--green), #7ff0b0);
+  transition: width 300ms ease;
+}

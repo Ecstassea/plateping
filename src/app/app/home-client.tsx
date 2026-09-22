@@ -66,6 +66,18 @@ export function HomeClient({
         PlatePing only notifies you. It never takes a fine payment.
       </p>
 
+      <Link
+        className="card flex items-center justify-between gap-3 p-4"
+        href="/app/billing"
+        transitionTypes={["tab-forward"]}
+      >
+        <div>
+          <p className="text-sm font-medium">Get a free month</p>
+          <p className="text-xs text-muted">Ten friends sign up with your link, you get a month free.</p>
+        </div>
+        <span className="shrink-0 text-sm text-green">Share →</span>
+      </Link>
+
       <div className="card flex items-center justify-between gap-3 p-4">
         <div>
           <p className="text-sm font-medium">Missing something?</p>
