@@ -9,11 +9,19 @@ type Summary = {
   companyMonths: number;
   signups: number;
   companies: number;
+  awaitingPayment: number;
   monthsEarned: number;
   towardsNext: number;
   needed: number;
   rewards: { kind: string; atReferralCount: number | null; months: number; pending: boolean; periodEnd: string | null }[];
-  signupList: { email: string; kind: string; orgName: string | null; counted: boolean; createdAt: string }[];
+  signupList: {
+    email: string;
+    kind: string;
+    orgName: string | null;
+    counted: boolean;
+    paid: boolean;
+    createdAt: string;
+  }[];
 };
 
 function shortDate(iso: string) {
@@ -90,20 +98,21 @@ export function ReferralCard() {
         </p>
       </div>
       <p className="mt-1 text-sm leading-6 text-muted">
-        Share your link. There is no limit on what you can earn.
+        Share your link. A free month is earned once the person you brought pays for their own plan, so there is
+        nothing to gain from made-up accounts. No limit on what you can earn.
       </p>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <div className="rounded-xl border border-line bg-bg-2 p-3">
           <p className="text-sm font-medium">{data.perReward} people</p>
           <p className="mt-0.5 text-xs text-muted">
-            {data.rewardMonths} free month · {data.signups} so far
+            {data.rewardMonths} free month · {data.signups} paying so far
           </p>
         </div>
         <div className="rounded-xl border border-green/40 bg-green/5 p-3">
           <p className="text-sm font-medium">1 company</p>
           <p className="mt-0.5 text-xs text-muted">
-            {data.companyMonths} free months · {data.companies} so far
+            {data.companyMonths} free months · {data.companies} paying so far
           </p>
         </div>
       </div>
@@ -111,7 +120,7 @@ export function ReferralCard() {
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs text-muted">
           <span>
-            {data.signups} {data.signups === 1 ? "personal sign-up" : "personal sign-ups"}
+            {data.signups} paying {data.signups === 1 ? "person" : "people"}
           </span>
           <span>
             {data.needed} more for the next free month
@@ -149,7 +158,9 @@ export function ReferralCard() {
                       s.email
                     )}
                   </span>
-                  <span className="shrink-0 text-muted">{shortDate(s.createdAt)}</span>
+                  <span className="shrink-0 text-muted">
+                    {s.paid ? "paid" : "not paid yet"} · {shortDate(s.createdAt)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -169,8 +180,9 @@ export function ReferralCard() {
       ) : null}
 
       <p className="mt-3 text-xs leading-5 text-muted">
-        Free months are for real people signing up. Accounts made to collect rewards are removed and do not
-        count.
+        {data.awaitingPayment > 0
+          ? `${data.awaitingPayment} ${data.awaitingPayment === 1 ? "person has" : "people have"} signed up through your link but not paid yet. They count the moment they do.`
+          : "Nothing counts until the person you brought pays for their own plan."}
       </p>
     </div>
   );

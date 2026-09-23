@@ -244,6 +244,9 @@ model Referral {
   /// Cleared by hand if a sign-up turns out to be fake; uncounted referrals
   /// do not move anyone towards a reward.
   counted        Boolean  @default(true)
+  /// When the referred person first paid for a plan. Nothing is rewarded until
+  /// this is set, so a signed-up account that never pays is worth nothing.
+  qualifiedAt    DateTime?
   createdAt      DateTime @default(now())
 
   referrer User @relation("referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
@@ -251,6 +254,7 @@ model Referral {
 
   @@index([referrerUserId, createdAt])
   @@index([code])
+  @@index([qualifiedAt])
 }
 
 /// A free month earned by referring people. One row per milestone reached,

@@ -82,7 +82,7 @@ const faqs = [
   },
   {
     q: "How do I get a free month?",
-    a: "Share your invite link, on the Plan tab once you are signed in. Every ten people who create an account through it earn you one free month. A company that signs up through it earns you three months on its own. Free months are added on top of whatever you already have, with no cap. Accounts made just to collect rewards are removed and do not count.",
+    a: "Share your invite link, on the Plan tab once you are signed in. A free month is earned once someone you brought pays for a plan of their own: ten paying people earn one month, and one paying company earns three. Free months are added on top of whatever you already have, with no cap. Sign-ups that never pay earn nothing, so there is no point making up accounts.",
   },
   {
     q: "Does it work on iPhone?",
@@ -269,8 +269,8 @@ export default function HomePage() {
               <span>
                 <span className="font-medium">Bring people, pay less.</span>{" "}
                 <span className="text-muted">
-                  Ten friends who sign up with your link earn you one free month. One company that signs up earns
-                  you three. No limit either way. Your link is on the Plan tab once you are in.
+                  Ten friends who take a paid plan through your link earn you one free month. One company that
+                  does earns you three. No limit either way. Your link is on the Plan tab once you are in.
                 </span>
               </span>
             </p>

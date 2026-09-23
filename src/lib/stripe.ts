@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { PAID_PLANS, planFromPriceId, stripePriceEnv } from "@/lib/plans";
+import { qualifyReferralsForOrganization } from "@/lib/referrals";
 
 export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -40,4 +41,8 @@ export async function applyStripeSubscription(args: {
         : undefined,
     },
   });
+
+  if (args.status === "active" || args.status === "trialing") {
+    await qualifyReferralsForOrganization(args.organizationId).catch(() => undefined);
+  }
 }

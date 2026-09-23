@@ -99,27 +99,52 @@ export async function recordReferral(args: {
     return null;
   }
 
-  if (kind === "company") {
-    // A company does not go towards the ten-sign-up tally; it pays its own
-    // larger reward immediately.
-    await grantCompanyReward(referrer.id, referral.id).catch(() => undefined);
-  }
-
-  return grantDueRewards(referrer.id);
+  // Nothing is paid yet. A referral is only worth something once the person
+  // it brought in has paid for a plan themselves.
+  return { referralId: referral.id, kind };
 }
 
 /**
- * Pays the months a referred company is worth. The referral id is unique on
- * the reward, so one company can never pay out more than once.
+ * Called when a workspace pays. If the person who owns it was referred, that
+ * referral now counts, and whatever it earns is paid out.
+ *
+ * Safe to call on every payment: a referral only qualifies once, and each
+ * reward is still claimed through a unique column.
  */
-export async function grantCompanyReward(userId: string, referralId: string) {
-  return grantMonths({
-    userId,
-    months: COMPANY_REWARD_MONTHS,
-    kind: "company",
-    referralId,
-    reason: "company",
+export async function qualifyReferralsForOrganization(organizationId: string) {
+  const owners = await prisma.membership.findMany({
+    where: { organizationId, role: "owner" },
+    select: { userId: true },
   });
+
+  for (const owner of owners) {
+    const referral = await prisma.referral.findUnique({
+      where: { referredUserId: owner.userId },
+    });
+    if (!referral || referral.qualifiedAt || !referral.counted) {
+      continue;
+    }
+
+    // Claim it first, so two payments landing together cannot both pay out.
+    const claimed = await prisma.referral.updateMany({
+      where: { id: referral.id, qualifiedAt: null },
+      data: { qualifiedAt: new Date() },
+    });
+    if (claimed.count === 0) {
+      continue;
+    }
+
+    if (referral.kind === "company") {
+      await grantMonths({
+        userId: referral.referrerUserId,
+        months: COMPANY_REWARD_MONTHS,
+        kind: "company",
+        referralId: referral.id,
+        reason: "company",
+      }).catch(() => undefined);
+    }
+    await grantDueRewards(referral.referrerUserId).catch(() => undefined);
+  }
 }
 
 /**
@@ -128,7 +153,7 @@ export async function grantCompanyReward(userId: string, referralId: string) {
  */
 export async function grantDueRewards(userId: string) {
   const counted = await prisma.referral.count({
-    where: { referrerUserId: userId, counted: true, kind: "personal" },
+    where: { referrerUserId: userId, counted: true, kind: "personal", qualifiedAt: { not: null } },
   });
   const earned = Math.floor(counted / REFERRALS_PER_REWARD);
   if (earned === 0) {
@@ -264,7 +289,14 @@ export async function referralSummary(userId: string) {
       where: { referrerUserId: userId },
       orderBy: { createdAt: "desc" },
       take: 50,
-      select: { referredEmail: true, kind: true, referredOrgName: true, createdAt: true, counted: true },
+      select: {
+        referredEmail: true,
+        kind: true,
+        referredOrgName: true,
+        createdAt: true,
+        counted: true,
+        qualifiedAt: true,
+      },
     }),
     prisma.referralReward.findMany({
       where: { userId },
@@ -273,8 +305,10 @@ export async function referralSummary(userId: string) {
     }),
   ]);
 
-  const personal = referrals.filter((r) => r.counted && r.kind !== "company").length;
-  const companies = referrals.filter((r) => r.counted && r.kind === "company").length;
+  const live = referrals.filter((r) => r.counted && r.qualifiedAt !== null);
+  const personal = live.filter((r) => r.kind !== "company").length;
+  const companies = live.filter((r) => r.kind === "company").length;
+  const awaitingPayment = referrals.filter((r) => r.counted && r.qualifiedAt === null).length;
   const towardsNext = personal % REFERRALS_PER_REWARD;
 
   return {
@@ -284,6 +318,7 @@ export async function referralSummary(userId: string) {
     companyMonths: COMPANY_REWARD_MONTHS,
     signups: personal,
     companies,
+    awaitingPayment,
     monthsEarned: rewards.reduce((total, r) => total + r.months, 0),
     towardsNext,
     needed: REFERRALS_PER_REWARD - towardsNext,
@@ -300,6 +335,7 @@ export async function referralSummary(userId: string) {
       kind: r.kind,
       orgName: r.kind === "company" ? r.referredOrgName : null,
       counted: r.counted,
+      paid: r.qualifiedAt !== null,
       createdAt: r.createdAt.toISOString(),
     })),
   };

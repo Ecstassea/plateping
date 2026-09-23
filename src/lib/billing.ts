@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { PLANS, isPaidPlanId, type PaidPlanId } from "@/lib/plans";
+import { qualifyReferralsForOrganization } from "@/lib/referrals";
 
 export const PLAN_PERIOD_DAYS = 30;
 
@@ -109,7 +110,7 @@ export async function applyPaidPlan(args: ApplyPaidPlanArgs): Promise<ApplyPaidP
     }
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     let paymentId = args.paymentId ?? undefined;
 
     const organization = await tx.organization.findUnique({
@@ -179,6 +180,14 @@ export async function applyPaidPlan(args: ApplyPaidPlanArgs): Promise<ApplyPaidP
       paymentId,
     };
   });
+
+  // Paying is what makes a referral worth something. A problem here must never
+  // undo a payment that already went through.
+  if (result.applied) {
+    await qualifyReferralsForOrganization(args.organizationId).catch(() => undefined);
+  }
+
+  return result;
 }
 
 /** Record a failed, cancelled or still-pending payment without touching entitlement. */
