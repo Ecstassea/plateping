@@ -84,6 +84,8 @@ export async function POST(request: Request) {
       code: parsed.data.ref,
       referredUserId: user.id,
       referredEmail: user.email,
+      kind: isCompany ? "company" : "personal",
+      referredOrgName: isCompany ? orgName : null,
       signupIp,
     }).catch(() => undefined);
   }

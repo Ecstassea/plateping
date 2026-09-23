@@ -73,7 +73,7 @@ export function HomeClient({
       >
         <div>
           <p className="text-sm font-medium">Get a free month</p>
-          <p className="text-xs text-muted">Ten friends sign up with your link, you get a month free.</p>
+          <p className="text-xs text-muted">Ten friends is a free month. One company is three.</p>
         </div>
         <span className="shrink-0 text-sm text-green">Share →</span>
       </Link>

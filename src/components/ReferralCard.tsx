@@ -6,12 +6,14 @@ type Summary = {
   code: string;
   perReward: number;
   rewardMonths: number;
+  companyMonths: number;
   signups: number;
+  companies: number;
   monthsEarned: number;
   towardsNext: number;
   needed: number;
-  rewards: { atReferralCount: number; months: number; pending: boolean; periodEnd: string | null }[];
-  signupList: { email: string; counted: boolean; createdAt: string }[];
+  rewards: { kind: string; atReferralCount: number | null; months: number; pending: boolean; periodEnd: string | null }[];
+  signupList: { email: string; kind: string; orgName: string | null; counted: boolean; createdAt: string }[];
 };
 
 function shortDate(iso: string) {
@@ -88,14 +90,28 @@ export function ReferralCard() {
         </p>
       </div>
       <p className="mt-1 text-sm leading-6 text-muted">
-        Every {data.perReward} people who sign up with your link give you {data.rewardMonths} free month. There is
-        no limit.
+        Share your link. There is no limit on what you can earn.
       </p>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded-xl border border-line bg-bg-2 p-3">
+          <p className="text-sm font-medium">{data.perReward} people</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {data.rewardMonths} free month · {data.signups} so far
+          </p>
+        </div>
+        <div className="rounded-xl border border-green/40 bg-green/5 p-3">
+          <p className="text-sm font-medium">1 company</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {data.companyMonths} free months · {data.companies} so far
+          </p>
+        </div>
+      </div>
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs text-muted">
           <span>
-            {data.signups} {data.signups === 1 ? "sign-up" : "sign-ups"}
+            {data.signups} {data.signups === 1 ? "personal sign-up" : "personal sign-ups"}
           </span>
           <span>
             {data.needed} more for the next free month
@@ -124,8 +140,16 @@ export function ReferralCard() {
             <div className="mt-3 space-y-2">
               {data.signupList.map((s) => (
                 <div className="flex items-center justify-between gap-3 text-xs" key={`${s.email}-${s.createdAt}`}>
-                  <span className={s.counted ? "text-ink" : "text-muted line-through"}>{s.email}</span>
-                  <span className="text-muted">{shortDate(s.createdAt)}</span>
+                  <span className={`min-w-0 truncate ${s.counted ? "text-ink" : "text-muted line-through"}`}>
+                    {s.kind === "company" ? (
+                      <>
+                        <span className="text-green">Company</span> · {s.orgName || s.email}
+                      </>
+                    ) : (
+                      s.email
+                    )}
+                  </span>
+                  <span className="shrink-0 text-muted">{shortDate(s.createdAt)}</span>
                 </div>
               ))}
             </div>
@@ -133,7 +157,8 @@ export function ReferralCard() {
         </>
       ) : (
         <p className="mt-3 text-xs leading-5 text-muted">
-          Nobody has joined yet. Send the link to people who drive in Harare.
+            Nobody has joined yet. Send the link to people who drive in Harare, and to any company running a
+          fleet.
         </p>
       )}
 

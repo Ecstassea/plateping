@@ -82,7 +82,7 @@ const faqs = [
   },
   {
     q: "How do I get a free month?",
-    a: "Share your invite link, on the Plan tab once you are signed in. Every ten people who create an account through it earn you one free month, added on top of whatever you already have. There is no cap. Accounts made just to collect rewards are removed and do not count.",
+    a: "Share your invite link, on the Plan tab once you are signed in. Every ten people who create an account through it earn you one free month. A company that signs up through it earns you three months on its own. Free months are added on top of whatever you already have, with no cap. Accounts made just to collect rewards are removed and do not count.",
   },
   {
     q: "Does it work on iPhone?",
@@ -267,10 +267,10 @@ export default function HomePage() {
             <p className="mt-4 inline-flex max-w-2xl items-start gap-2 rounded-2xl border border-green/40 bg-green/5 p-4 text-sm leading-6">
               <span aria-hidden="true">🎁</span>
               <span>
-                <span className="font-medium">Ten friends, one month free.</span>{" "}
+                <span className="font-medium">Bring people, pay less.</span>{" "}
                 <span className="text-muted">
-                  Every account that signs up with your link counts. Get another free month for every ten, with no
-                  limit. Your link is on the Plan tab once you are in.
+                  Ten friends who sign up with your link earn you one free month. One company that signs up earns
+                  you three. No limit either way. Your link is on the Plan tab once you are in.
                 </span>
               </span>
             </p>

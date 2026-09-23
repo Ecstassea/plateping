@@ -236,6 +236,10 @@ model Referral {
   referredUserId String   @unique
   code           String
   referredEmail  String
+  /// "personal" counts towards the ten-sign-up milestone; "company" pays its
+  /// own larger reward as soon as it happens.
+  kind           String   @default("personal")
+  referredOrgName String?
   signupIp       String?
   /// Cleared by hand if a sign-up turns out to be fake; uncounted referrals
   /// do not move anyone towards a reward.
@@ -255,9 +259,14 @@ model ReferralReward {
   id              String   @id @default(cuid())
   userId          String
   organizationId  String?
+  /// "signups" for the ten-sign-up milestone, "company" for a referred company.
+  kind            String   @default("signups")
   months          Int      @default(1)
-  /// The referral count this reward was for: 10, 20, 30 and so on.
-  atReferralCount Int
+  /// Which milestone this paid: 10, 20, 30 and so on. Null for a company reward.
+  atReferralCount Int?
+  /// Which referral paid this. Set for company rewards, and unique, so one
+  /// referred company can never pay out twice.
+  referralId      String?  @unique
   plan            String?
   periodEnd       DateTime?
   /// Set when the person owned no workspace at the time; claimed later.
