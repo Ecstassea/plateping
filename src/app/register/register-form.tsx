@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { storedReferralCode } from "@/components/ReferralCapture";
-import { cleanInviteCode, joinWithCode } from "@/lib/join";
+import { cleanInviteCode, cleanPlateParam, joinWithCode, watchPlate } from "@/lib/join";
 import { MARKETING_CONSENT } from "@/lib/mailing-list";
 
 export function RegisterForm() {
@@ -12,6 +12,8 @@ export function RegisterForm() {
   const params = useSearchParams();
   // Arrived from an invite link: sign them up, then put them in that fleet.
   const inviteCode = cleanInviteCode(params.get("join"));
+  // Arrived from a check result: start watching that plate the moment they sign up.
+  const plateToWatch = cleanPlateParam(params.get("plate"));
   const [accountType, setAccountType] = useState<"personal" | "company">("personal");
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -59,6 +61,13 @@ export function RegisterForm() {
       return;
     }
 
+    if (plateToWatch) {
+      await watchPlate(plateToWatch).catch(() => false);
+      setLoading(false);
+      router.replace("/app/vehicles");
+      return;
+    }
+
     setLoading(false);
     router.replace("/app");
   }
@@ -69,8 +78,14 @@ export function RegisterForm() {
         {inviteCode ? "Joining a fleet" : "7-day trial included"}
       </p>
       <h1 className="mt-3 text-3xl font-semibold">
-        {inviteCode ? "Create your login" : "Watch your plates"}
+        {inviteCode ? "Create your login" : plateToWatch ? `Watch ${plateToWatch}` : "Watch your plates"}
       </h1>
+      {plateToWatch && !inviteCode ? (
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Make a login and we start watching <span className="text-ink">{plateToWatch}</span> straight away. Seven
+          days free, no card, and nothing renews by itself.
+        </p>
+      ) : null}
       {inviteCode ? (
         <p className="mt-3 text-sm leading-6 text-muted">
           You were invited with code <span className="text-ink">{inviteCode}</span>. Make your own login and we
@@ -173,12 +188,15 @@ export function RegisterForm() {
         </label>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button className="btn btn-primary" disabled={loading} type="submit">
-          {loading ? "Creating…" : inviteCode ? "Create login and join" : "Start watching"}
+          {loading ? "Creating…" : inviteCode ? "Create login and join" : plateToWatch ? `Start watching ${plateToWatch}` : "Start watching"}
         </button>
       </form>
       <p className="mt-6 text-sm text-muted">
         Already have an account?{" "}
-        <Link className="text-green" href={inviteCode ? `/login?join=${inviteCode}` : "/login"}>
+        <Link
+          className="text-green"
+          href={inviteCode ? `/login?join=${inviteCode}` : plateToWatch ? `/login?plate=${plateToWatch}` : "/login"}
+        >
           Sign in
         </Link>
       </p>

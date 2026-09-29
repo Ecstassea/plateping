@@ -52,7 +52,7 @@ export function HomeClient({
 
       <div className="card p-4">
         <p className="mb-3 font-medium">Check a registration</p>
-        <CheckForm compact />
+        <CheckForm compact signedIn />
       </div>
 
       <Link className="btn btn-primary" href="/app/vehicles" transitionTypes={["tab-forward"]}>

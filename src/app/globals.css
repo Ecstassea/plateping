@@ -841,3 +841,86 @@ body {
   background: linear-gradient(90deg, var(--green), #7ff0b0);
   transition: width 300ms ease;
 }
+
+/* ---------------------------------------------------------------------------
+   Landing: the free check is the hero, because checking a plate is the moment
+   the product proves itself.
+--------------------------------------------------------------------------- */
+
+.hero-check {
+  max-width: 34rem;
+  border: 1px solid rgba(61, 220, 132, 0.35);
+  border-radius: 22px;
+  background:
+    radial-gradient(420px 160px at 20% 0%, rgba(61, 220, 132, 0.12), transparent 70%),
+    var(--card);
+  padding: 1rem;
+  box-shadow: 0 24px 60px -34px rgba(61, 220, 132, 0.55);
+}
+
+.field-hero {
+  min-height: 60px;
+  font-size: 1.35rem !important;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-align: center;
+  background: #f4f1e4;
+  color: #0f1a14;
+  border: 2px solid #0b1b13;
+  box-shadow: inset 0 0 0 3px #f4f1e4, inset 0 0 0 5px rgba(15, 26, 20, 0.35);
+}
+
+.field-hero::placeholder {
+  color: rgba(15, 26, 20, 0.35);
+}
+
+.btn-hero {
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+
+.trust-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.trust-inline::before {
+  content: "";
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.15);
+}
+
+.next-step {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+}
+
+.final-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border: 1px solid rgba(61, 220, 132, 0.4);
+  border-radius: 24px;
+  background:
+    radial-gradient(600px 200px at 90% 0%, rgba(61, 220, 132, 0.14), transparent 65%),
+    var(--bg-2);
+  padding: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .final-cta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2.25rem;
+  }
+}
+
+.next-step .btn {
+  width: 100%;
+}

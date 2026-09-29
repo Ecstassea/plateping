@@ -48,7 +48,89 @@ type CheckResult = {
   error?: string;
 };
 
-export function CheckForm({ compact = false }: { compact?: boolean }) {
+function whatsappShareUrl(text: string) {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+/**
+ * After a result, the person is at their most interested. This is where they
+ * are asked to act: watch the plate (one tap into sign-up, or straight onto
+ * their list if they are already in the app), or send the check to someone.
+ */
+function NextStep({ result, signedIn }: { result: CheckResult; signedIn: boolean }) {
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [message, setMessage] = useState("");
+  const plate = result.plateDisplay;
+  const plateParam = encodeURIComponent(plate.replace(/\s+/g, ""));
+
+  async function watchNow() {
+    setState("saving");
+    const response = await fetch("/api/vehicles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plate }),
+    });
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    if (response.ok) {
+      setState("saved");
+      return;
+    }
+    setState("error");
+    setMessage(data.error || "Could not add that plate.");
+  }
+
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const shareText = result.listed
+    ? `${plate} is on a published ZRP camera list. Check any plate free on PlatePing: ${origin}`
+    : `Check if your number plate is on a ZRP camera list, free: ${origin}`;
+
+  return (
+    <div className="next-step">
+      {signedIn ? (
+        state === "saved" ? (
+          <p className="text-sm text-green">Watching {plate}. You will be told the day it appears on a new list.</p>
+        ) : (
+          <button className="btn btn-primary" disabled={state === "saving"} onClick={() => void watchNow()} type="button">
+            {state === "saving" ? "Adding…" : `Watch ${plate}`}
+          </button>
+        )
+      ) : (
+        <>
+          <p className="text-sm font-medium">
+            {result.listed
+              ? `Get told the day ${plate} appears on the next list.`
+              : `Stay clear. Get told the day ${plate} appears on a list.`}
+          </p>
+          <a className="btn btn-primary mt-3" href={`/register?plate=${plateParam}`}>
+            Watch {plate} free for 7 days
+          </a>
+          <p className="mt-2 text-xs text-muted">No card needed. Nothing renews by itself.</p>
+        </>
+      )}
+      {state === "error" ? <p className="mt-2 text-sm text-danger">{message}</p> : null}
+      <a
+        className="btn btn-ghost mt-3"
+        href={whatsappShareUrl(shareText)}
+        rel="noreferrer"
+        target="_blank"
+      >
+        Send to someone on WhatsApp
+      </a>
+    </div>
+  );
+}
+
+export function CheckForm({
+  compact = false,
+  hero = false,
+  signedIn = false,
+}: {
+  compact?: boolean;
+  /** Large, first-thing-you-see styling for the landing page. */
+  hero?: boolean;
+  /** In the app: "Watch" adds the plate straight away instead of sending to sign-up. */
+  signedIn?: boolean;
+}) {
   const [plate, setPlate] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
@@ -57,18 +139,29 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
     event.preventDefault();
     setLoading(true);
     setResult(null);
+    const failed = (error: string) =>
+      setResult({ plateDisplay: plate, listed: false, fines: [], error });
     try {
       const response = await fetch("/api/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plate }),
       });
-      const data = (await response.json()) as CheckResult & { error?: string };
-      if (!response.ok) {
-        setResult({ plateDisplay: plate, listed: false, fines: [], error: data.error });
+      // A server error can come back without a JSON body; never let that
+      // leave the person staring at a form that did nothing.
+      const data = (await response.json().catch(() => null)) as (CheckResult & { error?: string }) | null;
+      if (!response.ok || !data) {
+        failed(
+          data?.error ||
+            (response.status === 429
+              ? "Too many checks from this connection. Try again in a few minutes."
+              : "We could not check the lists just now. Please try again in a moment."),
+        );
         return;
       }
       setResult(data);
+    } catch {
+      failed("No connection. Check your data or Wi-Fi and try again.");
     } finally {
       setLoading(false);
     }
@@ -80,15 +173,16 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="space-y-3">
         <input
-          className="field uppercase tracking-[0.18em]"
+          aria-label="Number plate"
+          className={`field uppercase tracking-[0.18em] ${hero ? "field-hero" : ""}`}
           value={plate}
           onChange={(event) => setPlate(event.target.value.toUpperCase())}
           placeholder="ADX 5897"
           autoComplete="off"
           inputMode="text"
         />
-        <button className="btn btn-primary" disabled={loading} type="submit">
-          {loading ? "Checking lists…" : "Check this plate"}
+        <button className={`btn btn-primary ${hero ? "btn-hero" : ""}`} disabled={loading} type="submit">
+          {loading ? "Checking lists…" : hero ? "Check my plate, free" : "Check this plate"}
         </button>
         {compact ? null : (
           <p className="text-xs leading-5 text-muted">
@@ -170,6 +264,7 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
                   the station.
                 </p>
               )}
+              <NextStep result={result} signedIn={signedIn} />
             </>
           ) : (
             <>
@@ -187,11 +282,7 @@ export function CheckForm({ compact = false }: { compact?: boolean }) {
                   ))}
                 </div>
               ) : null}
-              {compact ? null : (
-                <p className="text-xs text-muted">
-                  Create a free account to watch the plate and get notified if it appears later.
-                </p>
-              )}
+              <NextStep result={result} signedIn={signedIn} />
             </>
           )}
         </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { cleanInviteCode, joinWithCode } from "@/lib/join";
+import { cleanInviteCode, cleanPlateParam, joinWithCode, watchPlate } from "@/lib/join";
 
 // Only places inside this app; never an absolute URL someone pasted into a link.
 function safeNextPath(value: string | null) {
@@ -17,6 +17,7 @@ export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const inviteCode = cleanInviteCode(params.get("join"));
+  const plateToWatch = cleanPlateParam(params.get("plate"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -42,6 +43,13 @@ export function LoginForm() {
       const joined = await joinWithCode(inviteCode);
       setLoading(false);
       router.replace(joined ? "/app/team" : `/join?code=${inviteCode}`);
+      return;
+    }
+
+    if (plateToWatch) {
+      await watchPlate(plateToWatch).catch(() => false);
+      setLoading(false);
+      router.replace("/app/vehicles");
       return;
     }
 
@@ -86,7 +94,10 @@ export function LoginForm() {
       </form>
       <p className="mt-6 text-sm text-muted">
         New here?{" "}
-        <Link className="text-green" href={inviteCode ? `/register?join=${inviteCode}` : "/register"}>
+        <Link
+          className="text-green"
+          href={inviteCode ? `/register?join=${inviteCode}` : plateToWatch ? `/register?plate=${plateToWatch}` : "/register"}
+        >
           Create an account
         </Link>
       </p>
