@@ -38,7 +38,7 @@ export async function listVehicles(organizationId: string, plateCap: number | nu
   }
 
   const fines = await prisma.fine.findMany({
-    where: { plateNormalized: { in: vehicles.map((vehicle) => vehicle.plateNormalized) } },
+    where: { plateNormalized: { in: vehicles.map((vehicle) => vehicle.plateNormalized) }, status: "listed" },
   });
 
   return vehicles.map((vehicle) => {
@@ -65,7 +65,7 @@ export async function countFlaggedVehicles(organizationId: string): Promise<numb
   const rows = await prisma.$queryRaw<{ count: number }[]>`
     SELECT COUNT(DISTINCT v."plateNormalized")::int AS count
     FROM "Vehicle" v
-    INNER JOIN "Fine" f ON f."plateNormalized" = v."plateNormalized"
+    INNER JOIN "Fine" f ON f."plateNormalized" = v."plateNormalized" AND f."status" = 'listed'
     WHERE v."organizationId" = ${organizationId}`;
   return rows[0]?.count ?? 0;
 }

@@ -133,12 +133,42 @@ model Fine {
   statementTitle  String?
   listedAt        DateTime?
   estimatedUsd    String?
+  /// "listed" counts everywhere. "unverified" rows came from a source that
+  /// does not match ZRP's own statements and are never shown or alerted on.
   status          String    @default("listed")
+  /// The ZRP statement this listing came from. A plate on two statements has
+  /// two rows, so a fresh listing always alerts again.
+  statementId     String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  @@unique([plateNormalized, source, offence])
+  statement ListStatement? @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  @@unique([plateNormalized, statementId])
   @@index([plateNormalized])
+  @@index([status])
+}
+
+/// One published ZRP list of vehicles, from its website or imported by hand.
+model ListStatement {
+  id           String    @id @default(cuid())
+  /// "zrp.gov.zw" when found automatically, "manual" when imported by an admin.
+  source       String
+  /// Where the list was published. Unique, so the same statement is never imported twice.
+  url          String    @unique
+  title        String
+  publishedOn  DateTime?
+  /// "imported", or "needs_review" when it was found but its plates could not be read.
+  status       String    @default("imported")
+  plateCount   Int       @default(0)
+  importedBy   String?
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  fines Fine[]
+
+  @@index([publishedOn])
 }
 
 model Notification {

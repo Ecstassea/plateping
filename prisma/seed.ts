@@ -2,7 +2,7 @@ import { hash } from "bcryptjs";
 import { prisma } from "../src/lib/db";
 import { randomInviteCode } from "../src/lib/invite";
 import { notifyWatchers } from "../src/lib/notify";
-import { displayPlate, ROBOT_OFFENCE } from "../src/lib/plates";
+import { displayPlate } from "../src/lib/plates";
 import { syncFineLists } from "../src/lib/scraper";
 
 async function main() {
@@ -88,7 +88,7 @@ async function main() {
         label: "Family sedan",
       },
     });
-    await notifyWatchers("ADX5897", ROBOT_OFFENCE);
+    await notifyWatchers("ADX5897", { title: "Demo list", url: null, publishedOn: new Date() });
   }
 
   if (fleetOrg) {
@@ -107,7 +107,7 @@ async function main() {
         label: "Delivery 1",
       },
     });
-    await notifyWatchers("AFN2566", ROBOT_OFFENCE);
+    await notifyWatchers("AFN2566", { title: "Demo list", url: null, publishedOn: new Date() });
   }
 
   console.log("Seeded demo@plateping.co / fleet@plateping.co password demo1234");

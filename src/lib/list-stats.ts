@@ -15,9 +15,9 @@ export async function getListStats(): Promise<ListStats | null> {
   try {
     const [rows, lastRun] = await Promise.all([
       prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(DISTINCT "plateNormalized")::int AS count FROM "Fine"`,
+        SELECT COUNT(DISTINCT "plateNormalized")::int AS count FROM "Fine" WHERE "status" = 'listed'`,
       prisma.syncRun.findFirst({
-        where: { status: "ok" },
+        where: { status: "ok", source: "zrp.gov.zw" },
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       }),

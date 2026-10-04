@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatPlateCap, getLimits, isAtCap } from "@/lib/plans";
 import { notifyWatchers } from "@/lib/notify";
-import { displayPlate, isPlausiblePlate, normalizePlate, ROBOT_OFFENCE } from "@/lib/plates";
+import { displayPlate, isPlausiblePlate, normalizePlate } from "@/lib/plates";
 import { rateLimit } from "@/lib/rate-limit";
 import { badRequest, readJson, rejectUntrustedOrigin, tooMany } from "@/lib/request";
 import { lookupPlate } from "@/lib/scraper";
@@ -71,7 +71,12 @@ export async function POST(request: Request) {
 
     const check = await lookupPlate(plateNormalized);
     if (check.ok && check.listed && limits.alerts) {
-      await notifyWatchers(plateNormalized, ROBOT_OFFENCE);
+      const latest = check.fines[0];
+      await notifyWatchers(plateNormalized, {
+        title: latest.statementTitle ?? "ZRP list of vehicles captured by traffic cameras",
+        url: latest.sourceUrl,
+        publishedOn: latest.listedAt,
+      });
     }
     return NextResponse.json({
       vehicle,

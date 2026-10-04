@@ -36,31 +36,22 @@ export function sourceLabel(source: string) {
   switch (source) {
     case "zrp.gov.zw":
       return "Official ZRP press statement";
+    case "manual":
+      return "Official ZRP list";
     case "zrp.netlify.app":
-      return "Public plate list (not a ZRP website)";
+      return "Unverified public copy";
     default:
       return "Published traffic list";
   }
 }
 
+/** The statement a listing came from, falling back to ZRP's May 2025 statement for old rows. */
 export function sourceHref(source: string, sourceUrl: string | null) {
-  switch (source) {
-    case "zrp.gov.zw":
-    case "zrp.netlify.app":
-      return OFFICIAL_ZRP_LIST_STATEMENT.href;
-    default:
-      return sourceUrl;
-  }
+  return sourceUrl || OFFICIAL_ZRP_LIST_STATEMENT.href;
 }
 
 export function statementDisplayTitle(source: string, storedTitle: string | null) {
-  switch (source) {
-    case "zrp.gov.zw":
-    case "zrp.netlify.app":
-      return OFFICIAL_ZRP_LIST_STATEMENT.title;
-    default:
-      return storedTitle || "Published traffic list";
-  }
+  return storedTitle || OFFICIAL_ZRP_LIST_STATEMENT.title;
 }
 
 export const ZRP_REPORT =

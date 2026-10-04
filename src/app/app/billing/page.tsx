@@ -1,4 +1,6 @@
 import { TabScreen } from "@/components/TabScreen";
+import Link from "next/link";
+import { isAdminEmail } from "@/lib/admin";
 import { isOwner, requireSession } from "@/lib/auth";
 import { isPaynowReference } from "@/lib/billing";
 import { activeBillingProvider } from "@/lib/billing-provider";
@@ -80,6 +82,15 @@ export default async function BillingPage({ searchParams }: Props) {
         payments={payments}
         initialMessage={pending ? "" : checkoutMessage(params.status)}
       />
+      {isAdminEmail(session.user.email) ? (
+        <Link className="card mt-5 flex items-center justify-between p-4" href="/app/admin">
+          <span>
+            <span className="block text-sm font-medium">Admin: ZRP lists</span>
+            <span className="text-xs text-muted">Import new lists and check the automatic sync.</span>
+          </span>
+          <span className="text-sm text-green">Open →</span>
+        </Link>
+      ) : null}
     </TabScreen>
   );
 }
