@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDoc } from "@/components/LegalDoc";
 import { LEGAL_OPERATOR, LEGAL_PRODUCT } from "@/lib/legal";
+import { SITE_HOST, SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy policy — PlatePing",
@@ -13,7 +14,7 @@ export default function PrivacyPage() {
     <LegalDoc title="Privacy policy">
       <p>
         {LEGAL_PRODUCT} is operated by {LEGAL_OPERATOR} (“we”, “us”), the data controller, in
-        Zimbabwe. This policy explains what we collect when you use plateping.vercel.app, including
+        Zimbabwe. This policy explains what we collect when you use {SITE_HOST}, including
         the home-screen app.
       </p>
 
@@ -44,8 +45,9 @@ export default function PrivacyPage() {
           ZRP lists so we can check and watch them.
         </li>
         <li>
-          <strong>Technical:</strong> a signed session cookie, IP-based rate limits, and basic request
-          logs from our host.
+          <strong>Technical:</strong> a signed session cookie, IP-based rate limits, basic request logs
+          from our host, and the IP address an account was created from, which we keep to stop fake
+          sign-ups being used to claim referral rewards.
         </li>
         <li>
           <strong>Mailing list:</strong> email (and name if you gave it) when you subscribe without an
@@ -73,7 +75,9 @@ export default function PrivacyPage() {
       <h2>Who we share with</h2>
       <p>
         We use processors to run the product: website hosting (currently Vercel), database hosting
-        (currently Neon), email delivery if configured (for example Resend), and browser/OS push
+        (currently Neon), payments (Paynow, which receives your email address and handles your
+        EcoCash, OneMoney, InnBucks or card details; we never see them), email delivery if configured
+        (for example Resend), and browser/OS push
         services if you turn on phone alerts. Those processors may store data outside Zimbabwe,
         including in the United States or the European Union. We do not sell your email or plate list.
         We may disclose data if Zimbabwe law requires it.
@@ -95,9 +99,11 @@ export default function PrivacyPage() {
 
       <h2>Your choices</h2>
       <p>
-        You can correct your name, leave a workspace, remove watched plates, turn off marketing email,
-        and disable phone alerts in the device. To access or delete your account data, email us from
-        the same address as the account, subject “PlatePing data request”, to {LEGAL_OPERATOR}, Harare,
+        You can leave a workspace and remove watched plates in the app, and turn off phone alerts in
+        your device settings. A workspace owner can remove members at any time. Marketing email is only
+        sent if you ticked the box for it. To correct your details, stop marketing email, or access or
+        delete your account data, email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> from the
+        same address as the account, subject “PlatePing data request”. {LEGAL_OPERATOR}, Harare,
         Zimbabwe. We may need to verify it is you.
       </p>
 

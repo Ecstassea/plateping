@@ -114,6 +114,20 @@ export const requireSession = cache(async () => {
     return null;
   }
 
+  const include = {
+    user: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    },
+    organization: true,
+  } as const;
+
   const membership = await prisma.membership.findUnique({
     where: {
       userId_organizationId: {
@@ -121,22 +135,19 @@ export const requireSession = cache(async () => {
         organizationId: session.orgId,
       },
     },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      },
-      organization: true,
-    },
+    include,
   });
+  if (membership) {
+    return membership;
+  }
 
-  return membership;
+  // Removed from (or left) the workspace this session was opened in: carry on
+  // in one they still belong to rather than locking them out of everything.
+  return prisma.membership.findFirst({
+    where: { userId: session.userId },
+    orderBy: { createdAt: "asc" },
+    include,
+  });
 });
 
 export function isOwner(

@@ -21,11 +21,25 @@ export async function notifyWatchers(plateNormalized: string, offence: string) {
     if (!limits.alerts) {
       continue;
     }
+    // Plates beyond the plan's cap (for instance after moving to a smaller
+    // plan) are paused: the oldest plates up to the cap keep alerting.
+    if (limits.vehicles !== null) {
+      const allowed = await prisma.vehicle.findMany({
+        where: { organizationId: vehicle.organizationId },
+        orderBy: { createdAt: "asc" },
+        take: limits.vehicles,
+        select: { id: true },
+      });
+      if (!allowed.some((v) => v.id === vehicle.id)) {
+        continue;
+      }
+    }
 
     for (const member of vehicle.organization.memberships) {
       const existing = await prisma.notification.findFirst({
         where: {
           userId: member.userId,
+          organizationId: vehicle.organizationId,
           plateNormalized,
           title,
         },

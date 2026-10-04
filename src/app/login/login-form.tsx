@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { cleanInviteCode, cleanPlateParam, joinWithCode, watchPlate } from "@/lib/join";
+import { cleanInviteCode, cleanPlateParam, watchPlate } from "@/lib/join";
 
 // Only places inside this app; never an absolute URL someone pasted into a link.
 function safeNextPath(value: string | null) {
@@ -40,9 +40,10 @@ export function LoginForm() {
     }
 
     if (inviteCode) {
-      const joined = await joinWithCode(inviteCode);
+      // Show the join screen with the code filled in, so joining is always the
+      // person's own choice and a shared link cannot pull them into a workspace.
       setLoading(false);
-      router.replace(joined ? "/app/team" : `/join?code=${inviteCode}`);
+      router.replace(`/join?code=${inviteCode}`);
       return;
     }
 

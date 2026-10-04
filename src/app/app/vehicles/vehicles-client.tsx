@@ -92,6 +92,11 @@ export function VehiclesClient({ initialVehicles, limits }: Props) {
                 <p className={`mt-1 text-xs ${vehicle.listed ? "text-danger" : "text-green"}`}>
                   {vehicle.listed ? "On a ZRP camera list" : "Not on any current list"}
                 </p>
+                {vehicle.paused ? (
+                  <p className="mt-1 text-xs text-gold">
+                    Alerts paused: over your plan&apos;s plate limit. Upgrade on the Plan tab or remove a plate.
+                  </p>
+                ) : null}
                 {vehicle.listings.map((listing) => (
                   <p key={`${vehicle.id}-${listing.source}`} className="mt-1 text-xs text-muted">
                     {listing.offence}

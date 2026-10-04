@@ -14,16 +14,24 @@ export type VehicleView = {
   plateDisplay: string;
   label: string | null;
   listed: boolean;
+  /** Over the plan's plate limit, so not alerting until the plan allows it. */
+  paused: boolean;
   listings: VehicleListing[];
 };
 
 /** Shared by the Plates screen and /api/vehicles so both stay in step. */
-export async function listVehicles(organizationId: string): Promise<VehicleView[]> {
+export async function listVehicles(organizationId: string, plateCap: number | null = null): Promise<VehicleView[]> {
   const vehicles = await prisma.vehicle.findMany({
     where: { organizationId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, plateDisplay: true, plateNormalized: true, label: true },
+    select: { id: true, plateDisplay: true, plateNormalized: true, label: true, createdAt: true },
   });
+  // The oldest plates up to the cap keep alerting; the rest are paused.
+  const active = new Set(
+    plateCap === null
+      ? vehicles.map((v) => v.id)
+      : [...vehicles].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).slice(0, plateCap).map((v) => v.id),
+  );
 
   if (vehicles.length === 0) {
     return [];
@@ -40,6 +48,7 @@ export async function listVehicles(organizationId: string): Promise<VehicleView[
       plateDisplay: vehicle.plateDisplay,
       label: vehicle.label,
       listed: matches.length > 0,
+      paused: !active.has(vehicle.id),
       listings: matches.map((fine) => ({
         offence: fine.offence,
         location: fine.location,

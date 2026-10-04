@@ -6,6 +6,13 @@ import { displayPlate, ROBOT_OFFENCE } from "../src/lib/plates";
 import { syncFineLists } from "../src/lib/scraper";
 
 async function main() {
+  // The seed creates demo logins with a published password. Never run it
+  // anywhere but a local database.
+  const url = process.env.DATABASE_URL ?? "";
+  const local = /localhost|127\.0\.0\.1|file:/.test(url);
+  if (!local && process.env.ALLOW_SEED !== "true") {
+    throw new Error("Refusing to seed a non-local database. Set ALLOW_SEED=true only if you are sure.");
+  }
   await syncFineLists();
 
   const passwordHash = await hash("demo1234", 10);

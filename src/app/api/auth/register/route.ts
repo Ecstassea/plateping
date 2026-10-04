@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       ? parsed.data.companyName
       : `${parsed.data.name}'s plates`;
 
-  const marketingOptIn = parsed.data.marketingOptIn !== false;
+  const marketingOptIn = parsed.data.marketingOptIn === true;
 
   const signupIp = clientIp(request);
   const user = await prisma.user.create({

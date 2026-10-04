@@ -131,7 +131,8 @@ export async function POST(request: Request) {
   }
 
   if (provider !== "stripe" || !stripeConfigured()) {
-    if (process.env.ALLOW_DEMO_BILLING !== "true") {
+    // Demo billing hands out plans for free, so it must never run in production.
+    if (process.env.ALLOW_DEMO_BILLING !== "true" || process.env.VERCEL_ENV === "production") {
       return NextResponse.json(
         { error: "Paid plans are not open yet. Your trial still works until it expires." },
         { status: 503 },
@@ -197,8 +198,17 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Only the workspace owner can change billing." }, { status: 403 });
   }
 
+  // Paynow and Smile&Pay periods are prepaid and simply run out; there is
+  // nothing to cancel, and cancelling must never throw away paid-for time.
+  if (!session.organization.stripeSubscriptionId) {
+    return NextResponse.json(
+      { error: "Your plan is prepaid and does not renew by itself, so there is nothing to cancel." },
+      { status: 400 },
+    );
+  }
+
   const stripe = getStripe();
-  if (stripe && session.organization.stripeSubscriptionId) {
+  if (stripe) {
     await stripe.subscriptions.cancel(session.organization.stripeSubscriptionId);
   }
 

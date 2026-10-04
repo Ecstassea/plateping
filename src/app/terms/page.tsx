@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_HOST } from "@/lib/site";
 import Link from "next/link";
 import { LegalDoc } from "@/components/LegalDoc";
 import { LEGAL_JURISDICTION, LEGAL_OPERATOR, LEGAL_PRODUCT } from "@/lib/legal";
@@ -13,7 +14,7 @@ export default function TermsPage() {
     <LegalDoc title="Terms of use">
       <p>
         These terms are a contract between you and {LEGAL_OPERATOR} for {LEGAL_PRODUCT} at
-        plateping.vercel.app, including the home-screen app. By creating an account or using the
+        {SITE_HOST}, including the home-screen app. By creating an account or using the
         service you agree to them. If you do not agree, do not use PlatePing.
       </p>
 

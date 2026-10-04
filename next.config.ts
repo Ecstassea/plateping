@@ -42,10 +42,31 @@ const staticCsp = [
 const STATIC_CSP_ROUTES = "/((?!app(?:[/]|$)|login$|register$|join$).*)";
 
 const BRAND_ASSETS =
-  "/(icon-192.png|icon-512.png|icon-maskable-192.png|icon-maskable-512.png|apple-touch-icon.png|badge-96.png|icon.svg|ecstassea-logo.svg|ecstassea-ai-icon.svg|zimbabwe-flag.svg)";
+  "/(icon-192.png|icon-512.png|icon-maskable-192.png|icon-maskable-512.png|apple-touch-icon.png|badge-96.png|icon.svg|og.png|ecstassea-logo.svg|ecstassea-ai-icon.svg|zimbabwe-flag.svg)";
+
+// Once APP_URL points at the real domain, the old vercel.app address sends
+// people there. API routes are left alone so payment callbacks for checkouts
+// started on the old address still arrive.
+const LEGACY_HOST = "plateping.vercel.app";
+const canonical = process.env.APP_URL ? new URL(process.env.APP_URL) : null;
+const legacyRedirects =
+  canonical && canonical.host !== LEGACY_HOST
+    ? [
+        { source: "/", has: [{ type: "host" as const, value: LEGACY_HOST }], destination: `${canonical.origin}/`, permanent: true },
+        {
+          source: "/:path((?!api(?:/|$)).+)",
+          has: [{ type: "host" as const, value: LEGACY_HOST }],
+          destination: `${canonical.origin}/:path`,
+          permanent: true,
+        },
+      ]
+    : [];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return legacyRedirects;
+  },
   experimental: {
     // Keeps a tapped tab warm in the client router cache, so switching back and
     // forth on a phone does not hit the database again.

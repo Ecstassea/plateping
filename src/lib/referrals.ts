@@ -1,15 +1,21 @@
 import { randomInt } from "node:crypto";
-import { addMonths } from "@/lib/billing";
+import { addDays, addMonths } from "@/lib/billing";
 import { prisma } from "@/lib/db";
-import { isPaidPlanId, normalizePlan, type PaidPlanId } from "@/lib/plans";
+import { COMPANY_PLANS, PLANS, isEntitled, isPaidPlanId, normalizePlan, type PaidPlanId } from "@/lib/plans";
 
 /** Personal sign-ups needed for one free month. */
 export const REFERRALS_PER_REWARD = 10;
 export const REWARD_MONTHS = 1;
 /** A referred company is worth this many free months on its own. */
 export const COMPANY_REWARD_MONTHS = 3;
-/** What someone on the free plan is put on when they earn a month. */
+/** What someone on the free or a lapsed plan is put on when they earn a month. */
 const DEFAULT_REWARD_PLAN: PaidPlanId = "starter";
+/**
+ * A reward is never worth more than this plan's price per month. Someone on a
+ * dearer plan gets the same value as fewer days, so a reward cannot be bought
+ * cheaply and cashed in as months of the most expensive plan.
+ */
+const REWARD_VALUE_CAP_PLAN: PaidPlanId = "fleet";
 
 /** Unambiguous characters only: these get read out and typed. */
 function randomCode(length = 7) {
@@ -81,10 +87,16 @@ export async function recordReferral(args: {
   }
 
   const kind = args.kind === "company" ? "company" : "personal";
+  // Signing up "a friend" from the referrer's own connection is the usual way
+  // rewards are farmed. Keep the record, but hold it until a person checks it.
+  const referrerIp = (await prisma.user.findUnique({ where: { id: referrer.id }, select: { signupIp: true } }))
+    ?.signupIp;
+  const sameConnection = Boolean(args.signupIp && referrerIp && args.signupIp === referrerIp && args.signupIp !== "unknown");
   let referral;
   try {
     referral = await prisma.referral.create({
       data: {
+        counted: !sameConnection,
         referrerUserId: referrer.id,
         referredUserId: args.referredUserId,
         code,
@@ -123,6 +135,14 @@ export async function qualifyReferralsForOrganization(organizationId: string) {
     });
     if (!referral || referral.qualifiedAt || !referral.counted) {
       continue;
+    }
+    // A "company" only earns the company reward once it pays for a company
+    // plan. Until then it waits, so a later company-plan payment still counts.
+    if (referral.kind === "company") {
+      const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { plan: true } });
+      if (!org || !(COMPANY_PLANS as string[]).includes(normalizePlan(org.plan))) {
+        continue;
+      }
     }
 
     // Claim it first, so two payments landing together cannot both pay out.
@@ -185,6 +205,16 @@ export async function grantDueRewards(userId: string) {
   return { counted, granted };
 }
 
+/** The reward's months, worth no more than the value cap plan's price. */
+function rewardEnd(base: Date, plan: PaidPlanId, months: number) {
+  const price = PLANS[plan].priceUsd;
+  const cap = PLANS[REWARD_VALUE_CAP_PLAN].priceUsd;
+  if (price <= cap) {
+    return addMonths(base, months);
+  }
+  return addDays(base, (months * 30.44 * cap) / price);
+}
+
 /**
  * Adds months to a workspace the person owns, on top of whatever they have.
  * The reward row is claimed first, and its unique column is what guarantees a
@@ -228,10 +258,11 @@ async function grantMonths(args: {
 
   const org = ownership.organization;
   const now = new Date();
-  const base = org.currentPeriodEnd && org.currentPeriodEnd > now ? org.currentPeriodEnd : now;
-  const periodEnd = addMonths(base, months);
+  // A lapsed or free workspace earns Starter, not whatever plan it once had.
   const current = normalizePlan(org.plan);
-  const plan = isPaidPlanId(current) ? current : DEFAULT_REWARD_PLAN;
+  const plan: PaidPlanId = isPaidPlanId(current) && isEntitled(org, now) ? current : DEFAULT_REWARD_PLAN;
+  const base = org.currentPeriodEnd && org.currentPeriodEnd > now && isEntitled(org, now) ? org.currentPeriodEnd : now;
+  const periodEnd = rewardEnd(base, plan, months);
 
   try {
     await prisma.referralReward.create({
@@ -278,10 +309,55 @@ async function grantMonths(args: {
   return true;
 }
 
+
+/**
+ * Rewards earned while the person owned no workspace are held as pending.
+ * Once they own one, the held months are applied here.
+ */
+export async function claimPendingRewards(userId: string) {
+  const pending = await prisma.referralReward.findMany({ where: { userId, pending: true } });
+  if (pending.length === 0) {
+    return 0;
+  }
+  const ownership = await prisma.membership.findFirst({
+    where: { userId, role: "owner" },
+    orderBy: { createdAt: "asc" },
+    include: { organization: true },
+  });
+  if (!ownership) {
+    return 0;
+  }
+  let applied = 0;
+  for (const reward of pending) {
+    // Claim the row first so a parallel request cannot apply it too.
+    const claimed = await prisma.referralReward.updateMany({
+      where: { id: reward.id, pending: true },
+      data: { pending: false, organizationId: ownership.organizationId },
+    });
+    if (claimed.count === 0) {
+      continue;
+    }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: ownership.organizationId } });
+    const now = new Date();
+    const current = normalizePlan(org.plan);
+    const plan: PaidPlanId = isPaidPlanId(current) && isEntitled(org, now) ? current : DEFAULT_REWARD_PLAN;
+    const base = org.currentPeriodEnd && org.currentPeriodEnd > now && isEntitled(org, now) ? org.currentPeriodEnd : now;
+    const periodEnd = rewardEnd(base, plan, reward.months);
+    await prisma.organization.update({
+      where: { id: org.id },
+      data: { plan, subscriptionStatus: "active", currentPeriodEnd: periodEnd },
+    });
+    await prisma.referralReward.update({ where: { id: reward.id }, data: { plan, periodEnd } });
+    applied += 1;
+  }
+  return applied;
+}
+
 /** Everything the Invite screen shows. */
 export async function referralSummary(userId: string) {
   const code = await ensureReferralCode(userId);
-  // Pay out anything owed, for instance a reward held while they had no workspace.
+  // Pay out anything owed, including rewards held while they had no workspace.
+  await claimPendingRewards(userId).catch(() => undefined);
   await grantDueRewards(userId).catch(() => undefined);
 
   const [referrals, rewards] = await Promise.all([

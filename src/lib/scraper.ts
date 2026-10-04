@@ -39,7 +39,12 @@ function extractQuotedPlates(text: string) {
 }
 
 function extractPagePlates(text: string) {
-  return uniquePlates([...text.matchAll(PAGE_PLATE)].map((match) => match[1]));
+  // Zimbabwe plates mix letters and digits; anything else on a page (HARARE,
+  // POLICE, phone numbers) is not a plate.
+  const candidates = [...text.matchAll(PAGE_PLATE)]
+    .map((match) => match[1])
+    .filter((value) => /[A-Z]/.test(value) && /\d/.test(value));
+  return uniquePlates(candidates);
 }
 
 // A list page is a few hundred kilobytes at most. Anything past this is not a

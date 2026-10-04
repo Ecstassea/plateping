@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { PLANS, isPaidPlanId, type PaidPlanId } from "@/lib/plans";
+import { PLANS, isPaidPlanId, normalizePlan, type PaidPlanId } from "@/lib/plans";
 import { qualifyReferralsForOrganization } from "@/lib/referrals";
 
 export const PLAN_PERIOD_DAYS = 30;
@@ -44,6 +44,42 @@ export function addMonths(date: Date, months: number) {
   const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
   result.setUTCDate(Math.min(day, lastDay));
   return result;
+}
+
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Where a newly bought period starts. Time already paid for is kept, but its
+ * value is kept rather than its length: three months of Starter do not turn
+ * into three months of Fleet Unlimited just because Unlimited was bought on
+ * top. Leftover time on a different plan is converted at the two prices.
+ * Trial days are free, so they carry over as they are.
+ */
+export function carryOverStart(
+  org: { plan: string; subscriptionStatus: string; currentPeriodEnd: Date | null },
+  newPlan: PaidPlanId,
+  now: Date,
+) {
+  const end = org.currentPeriodEnd;
+  if (!end || end <= now) {
+    return now;
+  }
+  const current = normalizePlan(org.plan);
+  if (org.subscriptionStatus === "trialing" || current === newPlan) {
+    return end;
+  }
+  const oldPrice = PLANS[current].priceUsd;
+  const newPrice = PLANS[newPlan].priceUsd;
+  if (oldPrice <= 0 || newPrice <= 0) {
+    return now;
+  }
+  const remaining = end.getTime() - now.getTime();
+  return new Date(now.getTime() + Math.floor((remaining * oldPrice) / newPrice));
+}
+
+export function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + Math.round(days * DAY_MS));
 }
 
 export type BillingProviderName = "paynow" | "smilepay" | "stripe" | "demo";
@@ -113,15 +149,17 @@ export async function applyPaidPlan(args: ApplyPaidPlanArgs): Promise<ApplyPaidP
   const result = await prisma.$transaction(async (tx) => {
     let paymentId = args.paymentId ?? undefined;
 
+    // Lock the workspace row so two credits landing together cannot both
+    // read the same end date and lose one of the periods.
+    await tx.$queryRaw`SELECT id FROM "Organization" WHERE id = ${args.organizationId} FOR UPDATE`;
     const organization = await tx.organization.findUnique({
       where: { id: args.organizationId },
-      select: { currentPeriodEnd: true },
+      select: { currentPeriodEnd: true, plan: true, subscriptionStatus: true },
     });
     if (!organization) {
       throw new Error("Organization not found.");
     }
-    const base =
-      organization.currentPeriodEnd && organization.currentPeriodEnd > now ? organization.currentPeriodEnd : now;
+    const base = carryOverStart(organization, plan, now);
     const currentPeriodEnd = periodEndFrom(base, args);
 
     if (args.orderReference) {

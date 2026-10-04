@@ -15,7 +15,7 @@ export default async function VehiclesPage() {
   return (
     <TabScreen>
       <VehiclesClient
-        initialVehicles={await listVehicles(session.organizationId)}
+        initialVehicles={await listVehicles(session.organizationId, limits.vehicles)}
         limits={{ vehicles: limits.vehicles, label: limits.label }}
       />
     </TabScreen>

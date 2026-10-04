@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/db";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 function vapidConfigured() {
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -12,7 +13,7 @@ function vapid() {
     return null;
   }
 
-  webpush.setVapidDetails("mailto:alerts@plateping.vercel.app", publicKey, privateKey);
+  webpush.setVapidDetails(`mailto:${SUPPORT_EMAIL}`, publicKey, privateKey);
   return webpush;
 }
 

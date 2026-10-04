@@ -25,7 +25,7 @@ export async function settlePaynowPayment(payment: Payment, polled: PaynowStatus
 
   if (isPaynowPaid(rawStatus)) {
     const receivedCents = Math.round(polled.amount * 100);
-    if (receivedCents < payment.amountCents) {
+    if (!(receivedCents >= payment.amountCents)) {
       await markPaymentStatus({
         orderReference: payment.orderReference,
         status: "failed",

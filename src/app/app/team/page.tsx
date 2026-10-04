@@ -43,11 +43,13 @@ export default async function TeamPage() {
           role: m.role,
         }))}
         limits={{ seats: limits.seats, label: limits.label }}
+        isOwner={isOwner(session)}
         members={members.map((member) => ({
           id: member.id,
           role: member.role,
           name: member.user.name,
           email: member.user.email,
+          isSelf: member.userId === session.userId,
         }))}
       />
     </TabScreen>

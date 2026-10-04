@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckForm } from "@/components/CheckForm";
 import { EmailCapture } from "@/components/EmailCapture";
@@ -13,6 +14,8 @@ import { OFFICIAL_ZRP_LIST_STATEMENT, OFFICIAL_ZRP_SCAM_STATEMENT } from "@/lib/
 
 // The list count is real and refreshed hourly; the page itself stays static and fast.
 export const revalidate = 3600;
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 function SearchIcon() {
   return (

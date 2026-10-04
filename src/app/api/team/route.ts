@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createSession, isOwner, requireSession } from "@/lib/auth";
+import { createSession, isOwner, randomInviteCode, requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getLimits, isAtCap } from "@/lib/plans";
 import { rateLimit } from "@/lib/rate-limit";
@@ -92,4 +92,99 @@ export async function POST(request: Request) {
 
   await createSession({ userId: session.userId, orgId: organization.id });
   return NextResponse.json({ ok: true });
+}
+
+const removeSchema = z.object({
+  memberId: z.string().trim().min(8).max(40),
+});
+
+/**
+ * Removes someone from the workspace. The owner can remove any member; anyone
+ * can remove themselves (leave). Access ends on their next request, because
+ * every request re-checks membership.
+ */
+export async function DELETE(request: Request) {
+  const originError = rejectUntrustedOrigin(request);
+  if (originError) {
+    return originError;
+  }
+
+  const session = await requireSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
+  const parsed = removeSchema.safeParse(await readJson(request));
+  if (!parsed.success) {
+    return badRequest("Choose who to remove.");
+  }
+
+  const target = await prisma.membership.findFirst({
+    where: { id: parsed.data.memberId, organizationId: session.organizationId },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "That person is not in this workspace." }, { status: 404 });
+  }
+
+  const leaving = target.userId === session.userId;
+  if (!leaving && !isOwner(session)) {
+    return NextResponse.json({ error: "Only the workspace owner can remove people." }, { status: 403 });
+  }
+  if (target.role === "owner") {
+    // A workspace must always have an owner to pay for it and manage it.
+    return NextResponse.json(
+      { error: "The owner cannot be removed or leave. Contact us to hand the workspace to someone else." },
+      { status: 400 },
+    );
+  }
+
+  await prisma.membership.delete({ where: { id: target.id } });
+
+  if (leaving) {
+    // Move them back into a workspace they still belong to.
+    const next = await prisma.membership.findFirst({
+      where: { userId: session.userId },
+      orderBy: { createdAt: "asc" },
+    });
+    if (next) {
+      await createSession({ userId: session.userId, orgId: next.organizationId });
+    }
+  }
+
+  return NextResponse.json({ ok: true, left: leaving });
+}
+
+/** Owner only: replaces the invite code so an old, shared code stops working. */
+export async function PATCH(request: Request) {
+  const originError = rejectUntrustedOrigin(request);
+  if (originError) {
+    return originError;
+  }
+
+  const session = await requireSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+  if (!isOwner(session)) {
+    return NextResponse.json({ error: "Only the workspace owner can change the invite code." }, { status: 403 });
+  }
+
+  const limit = await rateLimit(`team:rotate:${session.organizationId}`, 10, 60 * 60 * 1000);
+  if (!limit.ok) {
+    return tooMany(limit);
+  }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const updated = await prisma.organization.update({
+        where: { id: session.organizationId },
+        data: { inviteCode: randomInviteCode() },
+        select: { inviteCode: true },
+      });
+      return NextResponse.json({ ok: true, inviteCode: updated.inviteCode });
+    } catch {
+      // Collision with another workspace's code: try again.
+    }
+  }
+  return NextResponse.json({ error: "Could not create a new code. Try again." }, { status: 500 });
 }

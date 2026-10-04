@@ -23,6 +23,11 @@ export async function POST(request: Request) {
   if (!syncLimit.ok) {
     return tooMany(syncLimit);
   }
+  // One refresh every few minutes is plenty, however many owners press the button.
+  const globalLimit = await rateLimit("sync:global", 1, 5 * 60 * 1000);
+  if (!globalLimit.ok) {
+    return NextResponse.json({ error: "The lists were refreshed a moment ago. Try again in a few minutes." }, { status: 429 });
+  }
 
   const result = await syncFineLists();
   return NextResponse.json({

@@ -22,7 +22,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    vehicles: await listVehicles(session.organizationId),
+    vehicles: await listVehicles(session.organizationId, getLimits(session.organization).vehicles),
     limits: getLimits(session.organization),
   });
 }
